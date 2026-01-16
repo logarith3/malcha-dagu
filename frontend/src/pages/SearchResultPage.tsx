@@ -11,11 +11,18 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import SearchBar from '../components/SearchBar';
 import MatchaBounceLoader from '../components/MatchaBounceLoader';
 import ItemCard from '../components/ItemCard';
 import { useSearch, useTrackItemClick, useCreateUserItem } from '../hooks/useSearch';
+import { useAuth } from '../hooks/useAuth';
 import type { NaverItem, MergedUserItem } from '../types';
+
+// API 에러 응답 타입
+interface ApiErrorResponse {
+    [key: string]: string | string[];
+}
 
 // 소스 자동 감지 헬퍼
 const SOURCE_LABELS: Record<string, string> = {
@@ -53,6 +60,9 @@ export default function SearchResultPage() {
     const [showLoader, setShowLoader] = useState(true);
     const [minTimeElapsed, setMinTimeElapsed] = useState(false);
     const [showRegisterModal, setShowRegisterModal] = useState(false);
+
+    // SSO 인증 상태 확인
+    const { isLoggedIn } = useAuth();
 
     // React Query로 검색
     const { data, isLoading, isError, error } = useSearch(query, {
@@ -105,16 +115,16 @@ export default function SearchResultPage() {
                     transition={{ duration: 0.4 }}
                 >
                     {/* 헤더 */}
-                    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-stone-200">
+                    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-stone-200 shadow-sm">
                         <div className="max-w-4xl mx-auto px-4 py-4">
                             <div className="flex items-center gap-4">
                                 <motion.button
                                     onClick={() => navigate('/')}
-                                    className="text-2xl"
-                                    whileHover={{ scale: 1.1, rotate: 10 }}
-                                    whileTap={{ scale: 0.9 }}
+                                    className="text-2xl font-black text-matcha-600 tracking-tight"
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
                                 >
-                                    🍵
+                                    DAGU
                                 </motion.button>
                                 <div className="flex-1">
                                     <SearchBar
@@ -130,7 +140,7 @@ export default function SearchResultPage() {
 
                     {/* 메인 */}
                     <main className="max-w-4xl mx-auto px-4 py-8">
-                        {/* 헤더 + 등록 버튼 */}
+                        {/* 헤더 */}
                         <div className="flex items-center justify-between mb-6">
                             <div>
                                 <h1 className="text-2xl font-bold text-stone-800">
@@ -142,17 +152,6 @@ export default function SearchResultPage() {
                                     </p>
                                 )}
                             </div>
-
-                            <motion.button
-                                onClick={() => setShowRegisterModal(true)}
-                                className="px-4 py-2.5 bg-matcha-500 text-white rounded-xl font-medium
-                                         hover:bg-matcha-600 transition-colors shadow-md flex items-center gap-2"
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                            >
-                                <span>+</span>
-                                <span>매물 등록</span>
-                            </motion.button>
                         </div>
 
                         {/* 에러 */}
@@ -202,6 +201,7 @@ export default function SearchResultPage() {
                                         <ItemCard
                                             item={item}
                                             rank={index + 1}
+                                            referencePrice={data?.reference?.price}
                                             onClick={() => handleItemClick(item)}
                                         />
                                     </motion.div>
@@ -209,6 +209,25 @@ export default function SearchResultPage() {
                             </motion.div>
                         )}
                     </main>
+
+                    {/* FAB (매물 등록) - 로그인 시에만 표시 */}
+                    {isLoggedIn && (
+                        <motion.button
+                            onClick={() => setShowRegisterModal(true)}
+                            className="
+                                fixed bottom-8 right-8 z-50
+                                w-14 h-14 rounded-full bg-stone-800 text-white shadow-xl
+                                flex items-center justify-center text-2xl font-light
+                                hover:bg-stone-900 border border-stone-700
+                            "
+                            initial={{ scale: 0, rotate: 90 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                        >
+                            +
+                        </motion.button>
+                    )}
                 </motion.div>
             )}
 
@@ -266,20 +285,22 @@ function RegisterModal({ query, onClose }: { query: string; onClose: () => void 
                 alert(`${sourceName} 매물이 성공적으로 등록되었습니다! 🎸`);
                 onClose();
             },
-            onError: (error: any) => {
+            onError: (error: AxiosError<ApiErrorResponse>) => {
                 console.error('Failed to register item:', error);
 
                 let errorMsg = '등록에 실패했습니다.';
                 if (error.response?.data) {
                     const data = error.response.data;
-                    if (typeof data === 'object') {
+                    if (typeof data === 'object' && data !== null) {
                         const messages = Object.entries(data)
-                            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(' ') : value}`)
+                            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(' ') : String(value)}`)
                             .join('\n');
                         errorMsg = `입력값을 확인해주세요:\n${messages}`;
                     } else {
                         errorMsg = `오류: ${JSON.stringify(data)}`;
                     }
+                } else if (error.message) {
+                    errorMsg = `네트워크 오류: ${error.message}`;
                 }
                 alert(errorMsg);
             }
@@ -379,8 +400,8 @@ function RegisterModal({ query, onClose }: { query: string; onClose: () => void 
                             type="submit"
                             disabled={createUserItem.isPending}
                             className={`flex-1 py-3 rounded-xl text-white font-bold transition-all shadow-md active:scale-95 disabled:opacity-50 ${detectedSource !== 'other'
-                                    ? 'bg-matcha-600 hover:bg-matcha-700 hover:shadow-lg'
-                                    : 'bg-stone-500 hover:bg-stone-600'
+                                ? 'bg-matcha-600 hover:bg-matcha-700 hover:shadow-lg'
+                                : 'bg-stone-500 hover:bg-stone-600'
                                 }`}
                         >
                             {createUserItem.isPending ? '등록 중...' : '등록하기'}

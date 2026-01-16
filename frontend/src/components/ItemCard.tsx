@@ -45,6 +45,7 @@ export default function ItemCard({
 }: ItemCardProps) {
     const source = item.source || 'other';
     const sourceStyle = SOURCE_STYLES[source] || SOURCE_STYLES.other;
+    const mallName = 'mallName' in item ? item.mallName : ('source_display' in item ? item.source_display : '');
 
     // 할인율 계산
     const discount = 'discount_rate' in item
@@ -80,12 +81,15 @@ export default function ItemCard({
             "
         >
             {/* 순위 뱃지 */}
+            {/* 순위 뱃지 (1~3위만 표시) */}
             {rank && rank <= 3 && (
                 <div
                     className={`
-                        absolute -top-2 -left-2 w-8 h-8 rounded-full
-                        flex items-center justify-center text-sm font-bold text-white shadow-md
-                        ${rank === 1 ? 'bg-matcha-500' : rank === 2 ? 'bg-stone-400' : 'bg-stone-500'}
+                        absolute -top-3 -left-3 w-8 h-8 rounded-full
+                        flex items-center justify-center text-sm font-bold text-white shadow-lg z-10
+                        ${rank === 1 ? 'bg-gradient-to-br from-yellow-400 to-orange-500' :
+                            rank === 2 ? 'bg-gradient-to-br from-stone-300 to-stone-400' :
+                                'bg-gradient-to-br from-amber-600 to-amber-700'}
                     `}
                 >
                     {rank}
@@ -142,6 +146,31 @@ export default function ItemCard({
                         {discount > 0 && (
                             <p className="text-xs text-stone-500 mt-0.5">
                                 신품 대비 <span className="text-matcha-600 font-bold">{discount}%</span> 저렴
+                            </p>
+                        )}
+                        {/* 출처 & 판매처 & 배송정보 */}
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${sourceStyle.bg} ${sourceStyle.text}`}>
+                                {sourceStyle.label}
+                            </span>
+                            {/* 판매처 (네이버만 표시) */}
+                            {source === 'naver' && mallName && (
+                                <span className="text-xs text-stone-500 font-medium">
+                                    {mallName}
+                                </span>
+                            )}
+                            {/* 무료배송 배지 (네이버 아이템에 임의 적용 or 조건부) */}
+                            {source === 'naver' && (
+                                <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-500 text-[10px]">
+                                    무료배송
+                                </span>
+                            )}
+                        </div>
+
+                        {/* 가격 disclaimer (네이버 아이템만) */}
+                        {source === 'naver' && (
+                            <p className="text-[10px] text-stone-400 mt-0.5">
+                                * 가격이 변동될 수 있습니다
                             </p>
                         )}
                     </div>

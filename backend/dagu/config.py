@@ -8,7 +8,8 @@ class CrawlerConfig:
     """크롤러/API 설정"""
     
     # 가격 설정
-    MIN_PRICE_KRW = 30000  # 3만원 (페달/소스류 고려하여 하향 조정)
+    MIN_PRICE_KRW = 200000  # 20만원 (악기 기본)
+    MIN_PRICE_PEDAL = 50000 # 5만원 (이펙터/액세서리)
     MIN_PRICE_USD = 100
     
     # 결과 개수 설정
@@ -21,17 +22,133 @@ class CrawlerConfig:
 
 class CategoryConfig:
     """카테고리 판별용 키워드"""
-    
-    GUITAR_BRANDS = ["fender", "gibson", "prs", "ibanez", "esp", "jackson"]
+
+    GUITAR_BRANDS = ["fender", "gibson", "prs", "ibanez", "esp", "jackson", "gopherwood", "swing"]
     BASS_KEYWORDS = ['bass', 'precision', 'jazz bass', 'pbass', 'jbass']
-    PEDAL_KEYWORDS = ['pedal', 'stomp', 'effect', 'boss', 'strymon', 'overdrive', 'distortion']
+
+    # =========================================================================
+    # 모델명 별칭 매핑 (검색어 → 정식 모델명)
+    # 검색 시 별칭을 정식 모델명으로 변환하여 DB 매칭 정확도 향상
+    # =========================================================================
+    MODEL_ALIASES = {
+        # BOSS 이펙터
+        'ds1': 'DS-1',
+        'ds-1': 'DS-1',
+        'ds2': 'DS-2',
+        'sd1': 'SD-1',
+        'bd2': 'BD-2',
+        'mt2': 'MT-2',
+        'ce5': 'CE-5',
+        'dd8': 'DD-8',
+        'rv6': 'RV-6',
+        'tu3': 'TU-3',
+        'rc5': 'RC-5',
+        'katana': 'KATANA',
+
+        # Fender 기타
+        'strat': 'Stratocaster',
+        'stratocaster': 'Stratocaster',
+        'tele': 'Telecaster',
+        'telecaster': 'Telecaster',
+        'jazzmaster': 'Jazzmaster',
+        'jaguar': 'Jaguar',
+        'mustang': 'Mustang',
+
+        # Gibson 기타
+        'lp': 'Les Paul',
+        'lespaul': 'Les Paul',
+        'les paul': 'Les Paul',
+        'sg': 'SG',
+        'es335': 'ES-335',
+        'es-335': 'ES-335',
+        'flying v': 'Flying V',
+        'explorer': 'Explorer',
+
+        # 베이스
+        'pbass': 'Precision Bass',
+        'p-bass': 'Precision Bass',
+        'precision': 'Precision Bass',
+        'jbass': 'Jazz Bass',
+        'j-bass': 'Jazz Bass',
+
+        # Ibanez
+        'rg': 'RG',
+        'jem': 'JEM',
+        'prestige': 'Prestige',
+        'ts9': 'TS9',
+        'ts808': 'TS808',
+        'tubescreamer': 'Tube Screamer',
+        'tube screamer': 'Tube Screamer',
+
+        # PRS
+        'custom24': 'Custom 24',
+        'custom 24': 'Custom 24',
+        'mccarty': 'McCarty',
+        'se': 'SE',
+
+        # Marshall
+        'jcm800': 'JCM800',
+        'jcm900': 'JCM900',
+        'dsl': 'DSL',
+        'plexi': 'Plexi',
+    }
+    # 페달 키워드 (브랜드 + 모델명 패턴 + 한글)
+    PEDAL_KEYWORDS = [
+        'pedal', 'stomp', 'effect', 'effects', 'effector', '이펙터', '페달',
+        # 브랜드
+        'boss', '보스', 'strymon', 'tc electronic', 'mxr', 'electro-harmonix', 'ehx',
+        'ibanez tube screamer', 'ts808', 'ts9', 'keeley', 'walrus audio', 'jhs',
+        # 이펙트 종류
+        'overdrive', 'distortion', 'fuzz', 'delay', 'reverb', 'chorus', 'phaser',
+        'flanger', 'compressor', 'wah', 'looper', 'tuner pedal', 'eq pedal',
+        'booster', 'octave', 'tremolo', 'vibrato', 'noise gate', 'preamp pedal',
+        # BOSS 모델명 패턴 (대표적인 것들)
+        'ds-1', 'ds-2', 'sd-1', 'bd-2', 'od-3', 'mt-2', 'hm-2', 'md-2',
+        'ce-5', 'ch-1', 'bf-3', 'ph-3', 'rv-6', 'dd-8', 'rc-5', 'tu-3',
+        'ad-2', 'ad-3', 'cs-3', 'ge-7', 'ns-2', 'ps-6', 'sy-1', 'oc-5',
+    ]
     AMP_KEYWORDS = ['amp', 'cabinet', 'head', 'combo', 'amplifier']
     ACOUSTIC_KEYWORDS = ['acoustic', 'martin', 'taylor', '어쿠스틱', '통기타']
 
+    # 한글 브랜드명 매핑 (한글 검색 -> 영문 브랜드 감지용)
+    BRAND_NAME_MAPPING = {
+        '펜더': 'fender', '팬더': 'fender',
+        '깁슨': 'gibson',
+        '피알에스': 'prs',
+        '아이바네즈': 'ibanez', '이바네즈': 'ibanez',
+        '이에스피': 'esp',
+        '잭슨': 'jackson',
+        '샤벨': 'charvel',
+        '쉑터': 'schecter',
+        '써': 'suhr',
+        '뮤직맨': 'musicman',
+        '지앤엘': 'g&l', '지엔엘': 'g&l',
+        '야마하': 'yamaha',
+        '크래머': 'kramer',
+        '그레치': 'gretsch',
+        '보스': 'boss',
+        '마샬': 'marshall',
+        '복스': 'vox',
+        '오렌지': 'orange',
+        '메사': 'mesa',
+        '고퍼우드': 'gopherwood',
+        '스윙': 'swing',
+    }
+    
+  
 
 class FilterConfig:
     """필터링 설정"""
-    
+
+    # =========================================================================
+    # [0] 블랙리스트 예외 키워드 (이 단어가 있으면 블랙리스트 무시)
+    # "본품 + 액세서리 세트"는 본품이므로 통과시킴
+    # =========================================================================
+    BLACKLIST_EXCEPTION_KEYWORDS = [
+        '세트', '동시 구매', '동시구매', '포함', '증정', '사은품',
+        'set', 'bundle', 'combo', 'package', 'included', 'with',
+    ]
+
     # =========================================================================
     # [1] 통합 블랙리스트 (이 단어가 제목에 있으면 무조건 제외)
     # =========================================================================
@@ -43,23 +160,23 @@ class FilterConfig:
         # 2. 부품류 (영문)
         'neck', 'body', 'pickup', 'pickups', 'knob', 'knobs',
         'bridge', 'potentiometer', 'pot', 'pots',
-        'part', 'parts', 'screw', 'screws', 'nut', 'saddle', 'kit',
+        'part', 'parts', 'screw', 'screws', 'saddle',
         'wiring', 'truss rod', 'pickguard', 'switch', 'tuner', 'tuners',
-        'cover', 'covers', 'plate', 'assembly', 'electronics',
+        'cover', 'covers', 'plate', 'assembly', 'electronics', '픽업',
         
         # 2-1. 부품류 (한글)
         '넥', '넥만', '바디', '바디만', '픽업', '노브', '브릿지', '브리지',
         '부품', '나사', '너트', '키트', '조립', '배선', '픽가드', '스위치',
-        '튜너', '커버', '덮개', '회로', '스피커', '알루미늄', '툴', '아노다이징', '튜닝', '키',
+        '튜너', '커버', '덮개', '회로', '스피커', '알루미늄', '툴', '아노다이징', '튜닝', '본체',
         
         # 3. 액세서리류 (영문)
         'case', 'bag', 'gig bag', 'hardcase', 'strap', 'cable',
-        'capo', 'stand', 'hanger', 'sticker', 'picks', 'slide',
-        'string', 'polish', 'cloth',
+        'capo', 'hanger', 'sticker', 'picks', 'slide',
+        'string', 'polish', 'cloth', 'mini', '미니', 'adapter', '모자', '자전거',  # '손잡이' 제거 (왼손잡이 기타 오탐 방지)
         
         # 3-1. 액세서리류 (한글)
         '케이스', '가방', '하드케이스', '긱백', '스트랩', '케이블',
-        '카포', '스탠드', '거치대', '픽', '슬라이드', '현', '줄',
+        '카포', '스탠드', '거치대', '슬라이드', '줄', '어댑터',
         
         # 4. 문서/잡동사니
         'manual', 'instruction', 'warranty', 'certificate', 'book',
@@ -71,7 +188,7 @@ class FilterConfig:
         '복사', '복제', '모조', '짝퉁', '카피', '레플리카', '미니어처',
         
         # 6. 불량/파손
-        '파손', '고장', '불량', '흠집', '부러짐', '깨짐', 'junk',
+        '파손', '고장', '불량', '흠집', '부러짐', '깨짐', 'junk'
     ]
     
     # =========================================================================
@@ -81,11 +198,11 @@ class FilterConfig:
         'fender': [
             'squier', 'squire', 'affinity', 'bullet', 'sonic',
             'classic vibe', 'cv', 'paranormal', 'contemporary',
-            'fender clone', 'copy', 'replica', 'mini', 'loog',
+            'fender clone', 'copy', 'replica', 'mini', 'loog', '스콰이어', '스퀴어',
         ],
         'gibson': [
             'epiphone', 'maestro', 'baldwin', 'kramer',
-            'gibson style', 'gibson copy', 'replica', 'chibson',
+            'gibson style', 'gibson copy', 'replica', 'chibson', '에피폰',
         ],
         'prs': ['se', 's2', 'student edition'],
         'esp': ['ltd', 'edwards', 'grassroots'],
@@ -130,7 +247,7 @@ class FilterConfig:
     CATEGORY_AMP_KEYWORDS = [
         'amplifier', 'amp', 'amp head', 'combo', 'combo amp',
         'cabinet', 'cab', 'head', 'stack', 'half stack', 'full stack',
-        'rumble', 'bassman', 'twin', 'twin reverb', 'deluxe', 'deluxe reverb',
+        'rumble', 'bassman', 'twin reverb', 'deluxe reverb',  # 'deluxe' 단독 제거 (Les Paul Deluxe 오탐 방지)
         'princeton', 'champ', 'super', 'vibrolux',
         'marshall', 'vox', 'orange', 'mesa', 'boogie', 'peavey', 'ampeg',
         'roland', 'boss katana', 'blackstar',

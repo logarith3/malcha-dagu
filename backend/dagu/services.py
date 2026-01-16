@@ -1,5 +1,5 @@
 """
-Business logic services for MALCHA-DAGU.
+Business logic for MALCHA-DAGU.
 
 - NaverShoppingService: 네이버 쇼핑 API 연동 + 캐싱 + 필터링
 - SearchAggregatorService: 네이버 + DB 데이터 병합
@@ -9,6 +9,8 @@ Business logic services for MALCHA-DAGU.
 import hashlib
 import logging
 import re
+import concurrent.futures
+from difflib import SequenceMatcher
 from typing import Any
 
 import requests
@@ -87,8 +89,17 @@ class NaverShoppingService:
         Returns:
             필터링된 검색 결과 리스트
         """
-        # 1. 캐시 확인 (필터 적용 전 원본 데이터)
-        cache_key = self._get_cache_key(query, display * 3)  # 필터링 고려하여 3배 요청
+        # 0. 검색어 정규화 (한글 브랜드 -> 영어로 통일하여 캐시 효율성 증대)
+        from .config import CategoryConfig
+        normalized_query = query
+        for kr_name, en_brand in CategoryConfig.BRAND_NAME_MAPPING.items():
+            if kr_name in query:
+                normalized_query = query.replace(kr_name, en_brand)
+                logger.debug(f"[Cache] 검색어 정규화: '{query}' -> '{normalized_query}'")
+                break
+        
+        # 1. 캐시 확인 (정규화된 검색어로 캐시 키 생성)
+        cache_key = self._get_cache_key(normalized_query, display * 3)  # 필터링 고려하여 3배 요청
         cached_result = cache.get(cache_key)
         
         raw_items = []
@@ -106,39 +117,56 @@ class NaverShoppingService:
             
             try:
                 # 제외 키워드 추가 (API 레벨 필터링) - 일단 비활성화
-                # enhanced_query = build_exclusion_query(query)
-                enhanced_query = query  # 원본 쿼리 사용
-                logger.info(f"📝 검색 쿼리: '{enhanced_query}'")
+                # enhanced_query = build_exclusion_query(normalized_query)
+                enhanced_query = normalized_query  # 정규화된 쿼리 사용
+                logger.info(f"네이버 API 검색: '{enhanced_query}'")
                 
-                # 필터링으로 탈락할 것 고려하여 더 많이 요청
-                params = {
-                    'query': enhanced_query,
-                    'display': min(display * 3, 100),  # 최대 100개
-                    'sort': sort,
-                    'exclude': 'rental',  # 렌탈만 제외 (해외직구 허용)
-                }
+                # 필터링 대비 넉넉하게 500개 수집 (병렬 처리)
+                target_count = 200
+                page_size = 100
+                starts = range(1, target_count, page_size)  # 1, 101, 201, 301, 401
                 
-                logger.info(f"📤 API 요청: display={params['display']}, sort={params['sort']}, exclude={params['exclude']}")
+                raw_items = []
                 
-                response = requests.get(
-                    NAVER_API_URL,
-                    headers=self.headers,
-                    params=params,
-                    timeout=CrawlerConfig.TIMEOUT_NAVER,
-                )
+                # 내부 함수: 단일 페이지 요청
+                def fetch_page(start_idx):
+                    try:
+                        p = {
+                            'query': enhanced_query,
+                            'display': page_size,
+                            'start': start_idx,
+                            'sort': sort,
+                            'exclude': 'rental',
+                        }
+                        # logger.debug(f"📤 API 요청 시작: start={start_idx}")
+                        res = requests.get(
+                            NAVER_API_URL,
+                            headers=self.headers,
+                            params=p,
+                            timeout=CrawlerConfig.TIMEOUT_NAVER,
+                        )
+                        res.raise_for_status()
+                        data = res.json()
+                        items = data.get('items', [])
+                        # logger.debug(f"📥 API 응답 완료: start={start_idx}, 가져온 개수={len(items)}")
+                        return items
+                    except Exception as e:
+                        logger.error(f"Naver API Error (start={start_idx}): {e}")
+                        return []
+
+                # ThreadPoolExecutor로 병렬 실행 (속도 최적화)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                    logger.info(f"� 병렬 수집 시작: {target_count}개 목표 (Workers=5)")
+                    results = executor.map(fetch_page, starts)
+                    
+                    for items in results:
+                        raw_items.extend(items)
                 
-                logger.info(f"📥 API 응답: status={response.status_code}")
-                response.raise_for_status()
-                
-                data = response.json()
-                raw_items = data.get('items', [])
-                total = data.get('total', 0)
-                
-                logger.info(f"📦 [Naver] API 결과: total={total}, items={len(raw_items)}")
+                logger.info(f"✅ 병렬 수집 완료: 총 {len(raw_items)}개 아이템 확보")
                 
                 # 캐싱 (원본 데이터)
                 cache.set(cache_key, raw_items, CACHE_TTL)
-                logger.info(f"[Cache] 캐싱 완료: {len(raw_items)}개 아이템")
+                logger.debug(f"[Cache] 캐싱 완료: {len(raw_items)}개 아이템")
                 
             except requests.exceptions.Timeout:
                 logger.error(f"Naver API timeout for query: {query}")
@@ -163,11 +191,12 @@ class NaverShoppingService:
             'passed': 0
         }
         
-        logger.info(f"🔍 필터링 시작: {len(raw_items)}개 아이템")
-        
+        logger.debug(f"필터링 시작: {len(raw_items)}개 아이템")
+
         for item in raw_items:
             stats['total'] += 1
             title = item.get('title', '')[:50]
+            logger.debug(f"처리 중: {title}")
             price = int(item.get('lprice', 0) or 0)
             
             # 필터링 함수 호출
@@ -210,6 +239,200 @@ class NaverShoppingService:
 
 
 # =============================================================================
+# Search Utilities (검색 유틸리티)
+# =============================================================================
+
+def normalize_search_term(term: str) -> str:
+    """
+    검색어 정규화: 대소문자, 하이픈, 공백 통일
+    예: "DS-1", "ds1", "ds 1", "DS 1" → "ds1"
+    """
+    if not term:
+        return ""
+    # 소문자 변환
+    result = term.lower().strip()
+    # 하이픈, 언더스코어, 공백 제거
+    result = re.sub(r'[-_\s]+', '', result)
+    return result
+
+
+def expand_query_with_aliases(query: str) -> list[str]:
+    """
+    검색어를 별칭 매핑으로 확장
+    예: "ds1" → ["ds1", "DS-1"]
+    """
+    from .config import CategoryConfig
+
+    expanded = [query]
+    query_lower = query.lower().strip()
+    query_normalized = normalize_search_term(query)
+
+    # 별칭 → 정식 모델명 변환
+    aliases = getattr(CategoryConfig, 'MODEL_ALIASES', {})
+
+    # 정규화된 검색어로 별칭 찾기
+    if query_normalized in aliases:
+        expanded.append(aliases[query_normalized])
+
+    # 원본 검색어(소문자)로도 별칭 찾기
+    if query_lower in aliases:
+        expanded.append(aliases[query_lower])
+
+    # 검색어의 각 토큰별로 별칭 확장
+    for token in query_lower.split():
+        token_norm = normalize_search_term(token)
+        if token_norm in aliases:
+            expanded.append(aliases[token_norm])
+        if token in aliases:
+            expanded.append(aliases[token])
+
+    return list(set(expanded))
+
+
+def tokenize_query(query: str) -> list[str]:
+    """
+    검색어를 토큰으로 분리
+    예: "boss ds-1" → ["boss", "ds-1", "ds1"]
+    """
+    tokens = []
+    # 공백으로 분리
+    words = query.lower().strip().split()
+    for word in words:
+        tokens.append(word)
+        # 하이픈 제거 버전도 추가
+        normalized = re.sub(r'[-_]+', '', word)
+        if normalized != word:
+            tokens.append(normalized)
+    return list(set(tokens))
+
+
+def calculate_instrument_match_score(query: str, instrument) -> float:
+    """
+    검색어와 악기의 매칭 스코어 계산 (0.0 ~ 1.0)
+
+    높은 점수 조건:
+    - 모델명 정확 일치 (예: "ds-1" == "DS-1")
+    - 브랜드+모델명 조합 일치
+    - 별칭 매칭 (예: "ds1" → "DS-1")
+    - 토큰 기반 부분 매칭
+    """
+    query_normalized = normalize_search_term(query)
+    query_tokens = tokenize_query(query)
+
+    # 검색어 별칭 확장 (ds1 → DS-1 등)
+    expanded_queries = expand_query_with_aliases(query)
+
+    name = instrument.name or ""
+    brand = instrument.brand or ""
+    name_normalized = normalize_search_term(name)
+    brand_normalized = normalize_search_term(brand)
+    full_name = f"{brand} {name}".strip()
+    full_normalized = normalize_search_term(full_name)
+
+    score = 0.0
+
+    # 0. 별칭 확장된 쿼리로 정확 매칭 체크
+    for expanded in expanded_queries:
+        expanded_norm = normalize_search_term(expanded)
+        if expanded_norm == name_normalized:
+            score = 1.0
+            logger.debug(f"[Score 1.0] 별칭 정확 일치: '{expanded}' == '{name}'")
+            return score
+        # 별칭이 모델명에 포함되어 있는지 확인 (예: "DS-1" in "BOSS DS-1 Distortion")
+        if expanded.lower() in name.lower():
+            score = 0.95
+            logger.debug(f"[Score 0.95] 별칭 포함: '{expanded}' in '{name}'")
+            return score
+
+    # 1. 정규화된 모델명 정확 일치 (최고 점수)
+    if query_normalized == name_normalized:
+        score = 1.0
+        logger.debug(f"[Score 1.0] 정확 일치: '{query}' == '{name}'")
+        return score
+
+    # 2. 정규화된 전체 이름(브랜드+모델) 정확 일치
+    if query_normalized == full_normalized:
+        score = 0.95
+        logger.debug(f"[Score 0.95] 전체 일치: '{query}' == '{full_name}'")
+        return score
+
+    # 3. 모델명이 검색어에 포함 (예: "ds-1" in "boss ds-1")
+    if name_normalized and name_normalized in query_normalized:
+        score = 0.9
+        logger.debug(f"[Score 0.9] 모델명 포함: '{name}' in '{query}'")
+        return score
+
+    # 4. 검색어가 모델명에 포함 (예: "ds" in "ds-1")
+    if query_normalized and query_normalized in name_normalized:
+        base_score = 0.7
+        # 길이 비율로 보정 (짧은 검색어 페널티)
+        length_ratio = len(query_normalized) / len(name_normalized) if name_normalized else 0
+        score = base_score * length_ratio
+        logger.debug(f"[Score {score:.2f}] 부분 포함: '{query}' in '{name}'")
+        return max(score, 0.3)
+
+    # 5. 토큰 기반 매칭 (별칭 포함)
+    matched_tokens = 0
+    all_tokens = query_tokens.copy()
+    # 별칭 확장된 토큰도 추가
+    for expanded in expanded_queries:
+        all_tokens.extend(tokenize_query(expanded))
+    all_tokens = list(set(all_tokens))
+
+    for token in all_tokens:
+        token_norm = normalize_search_term(token)
+        if token_norm in name_normalized or token_norm in brand_normalized:
+            matched_tokens += 1
+
+    if matched_tokens > 0 and all_tokens:
+        token_score = matched_tokens / len(all_tokens)
+        score = 0.6 * token_score
+        logger.debug(f"[Score {score:.2f}] 토큰 매칭: {matched_tokens}/{len(all_tokens)}")
+        return score
+
+    # 6. 유사도 기반 매칭 (SequenceMatcher)
+    similarity = SequenceMatcher(None, query_normalized, name_normalized).ratio()
+    if similarity > 0.6:
+        score = 0.5 * similarity
+        logger.debug(f"[Score {score:.2f}] 유사도: {similarity:.2f}")
+        return score
+
+    return score
+
+
+def find_best_matching_instruments(query: str, instruments_qs, min_score: float = 0.3):
+    """
+    검색어에 가장 잘 맞는 악기들을 스코어 순으로 반환
+
+    Args:
+        query: 검색어
+        instruments_qs: Instrument QuerySet
+        min_score: 최소 스코어 (이하는 제외)
+
+    Returns:
+        list of (instrument, score) tuples, sorted by score desc
+    """
+    scored_instruments = []
+
+    for instrument in instruments_qs:
+        score = calculate_instrument_match_score(query, instrument)
+        if score >= min_score:
+            scored_instruments.append((instrument, score))
+
+    # 스코어 내림차순 정렬
+    scored_instruments.sort(key=lambda x: x[1], reverse=True)
+
+    if scored_instruments:
+        logger.info(
+            f"[매칭 결과] query='{query}' → "
+            f"Best: {scored_instruments[0][0].brand} {scored_instruments[0][0].name} "
+            f"(score={scored_instruments[0][1]:.2f})"
+        )
+
+    return scored_instruments
+
+
+# =============================================================================
 # Search Aggregator Service
 # =============================================================================
 
@@ -234,6 +457,11 @@ class SearchAggregatorService:
             'mesa', 'vox', 'marshall', 'orange', 'ampeg', 'tc electronic'
         ]
         
+        # 0. 한글 브랜드 매핑 체크
+        for kr_name, en_brand in CategoryConfig.BRAND_NAME_MAPPING.items():
+            if kr_name in query_lower:
+                return en_brand
+
         for brand in known_brands:
             if brand in query_lower:
                 return brand
@@ -281,27 +509,117 @@ class SearchAggregatorService:
         brand = self._extract_brand_from_query(query)
         category = self._detect_category(query)
         
-        logger.info(f"🔍 검색 시작: '{query}' (브랜드: {brand}, 카테고리: {category})")
+        logger.debug(f"query='{query}', brand={brand}, category={category}")
         
-        # 1. 네이버 API 검색 (필터링 적용)
+        from .config import CategoryConfig
+        query_lower = query.lower().strip()
+        query_normalized = normalize_search_term(query)
+
+        # =================================================================
+        # 1. DB에서 검색어와 매칭되는 악기(Instrument) 찾기
+        # - 스마트 매칭: 정규화 + 스코어링 + 별칭 확장
+        # - Unknown 브랜드 제외
+        # =================================================================
+
+        # 1-1. 후보 악기 조회 (넓게 검색)
+        query_tokens = tokenize_query(query)
+        expanded_queries = expand_query_with_aliases(query)  # 별칭 확장
+        candidate_filter = models.Q()
+
+        # 정규화된 검색어로 이름/브랜드 검색
+        for token in query_tokens:
+            candidate_filter |= models.Q(name__icontains=token)
+            candidate_filter |= models.Q(brand__icontains=token)
+
+        # 별칭 확장된 쿼리로도 검색 (예: ds1 → DS-1)
+        for expanded in expanded_queries:
+            candidate_filter |= models.Q(name__icontains=expanded)
+            # 토큰 분리된 별칭도 검색
+            for token in expanded.split():
+                if len(token) > 1:
+                    candidate_filter |= models.Q(name__icontains=token)
+
+        # 원본 검색어로도 검색 (하이픈 포함 케이스)
+        candidate_filter |= models.Q(name__icontains=query_lower)
+        candidate_filter |= models.Q(brand__icontains=query_lower)
+
+        logger.debug(f"별칭 확장: {query} → {expanded_queries}")
+
+        candidate_instruments = Instrument.objects.filter(
+            candidate_filter
+        ).exclude(
+            brand__iexact='unknown'
+        )[:50]  # 스코어링을 위해 넉넉하게
+
+        logger.debug(f"후보 악기 {candidate_instruments.count()}개 조회됨")
+
+        # 1-2. 스코어링 기반 최적 매칭
+        scored_matches = find_best_matching_instruments(
+            query=query,
+            instruments_qs=candidate_instruments,
+            min_score=0.3  # 30% 이상 매칭만 포함
+        )
+
+        # 상위 10개만 사용
+        matching_instruments = [inst for inst, score in scored_matches[:10]]
+        best_match = scored_matches[0] if scored_matches else None
+
+        if best_match:
+            logger.info(
+                f"[DB 매칭] '{query}' → '{best_match[0].brand} {best_match[0].name}' "
+                f"(score={best_match[1]:.2f})"
+            )
+
+        # =================================================================
+        # 2. 네이버 검색 - 최적 매칭 악기 기준으로 쿼리 생성
+        # =================================================================
+        naver_items = []
+        search_query = query
+
+        if best_match and best_match[1] >= 0.5:  # 50% 이상 매칭일 때만 치환
+            best_instrument = best_match[0]
+            search_query = f"{best_instrument.brand} {best_instrument.name}"
+            brand = best_instrument.brand.lower() if best_instrument.brand else brand
+            category = best_instrument.category if best_instrument.category else category
+            logger.info(f"[쿼리 변환] '{query}' → '{search_query}'")
+        else:
+            # 한글 브랜드 -> 영어 브랜드 치환
+            for kr_name, en_brand in CategoryConfig.BRAND_NAME_MAPPING.items():
+                if kr_name in query:
+                    search_query = query.replace(kr_name, en_brand)
+                    break
+        
+        logger.info(f"검색 시작: '{search_query}' (브랜드: {brand}, 카테고리: {category})")
+        
         naver_items = self.naver_service.search(
-            query=query, 
+            query=search_query, 
             display=display,
             brand=brand,
             category=category,
         )
         
-        # 2. DB 유저 매물 검색 (활성 + 미만료)
+        # =================================================================
+        # 3. DB 유저 매물 검색 - 매칭된 악기에 연결된 UserItem 우선
+        # =================================================================
         now = timezone.now()
-        user_items_qs = UserItem.objects.filter(
-            is_active=True,
-            expired_at__gt=now,
-        ).filter(
-            # 검색어로 악기 이름/브랜드 또는 매물 제목 검색
-            models.Q(instrument__name__icontains=query) |
-            models.Q(instrument__brand__icontains=query) |
-            models.Q(title__icontains=query)
-        ).select_related('instrument')[:display]
+
+        if matching_instruments:  # 리스트이므로 len > 0 체크
+            # 매칭된 악기들의 UserItem 가져오기
+            user_items_qs = UserItem.objects.filter(
+                is_active=True,
+                expired_at__gt=now,
+                instrument__in=matching_instruments
+            ).select_related('instrument')[:display]
+        else:
+            # 매칭 악기 없으면 기존 방식 (제목/브랜드 검색)
+            user_items_qs = UserItem.objects.filter(
+                is_active=True,
+                expired_at__gt=now,
+            ).filter(
+                models.Q(instrument__name__icontains=query) |
+                models.Q(instrument__brand__icontains=query) |
+                models.Q(title__icontains=query)
+            ).select_related('instrument')[:display]
         
         # 유저 매물을 딕셔너리로 변환 + 필터링
         user_items = []
@@ -314,9 +632,9 @@ class SearchAggregatorService:
             if not check_blacklist(title):
                 continue
             
-            # 최소 가격 필터
-            if not check_min_price(item.price):
-                continue
+            # 최소 가격 필터 (유저 매물은 가격 제한 없이 노출)
+            # if not check_min_price(item.price):
+            #     continue
             
             user_items.append({
                 'id': str(item.id),
@@ -342,12 +660,23 @@ class SearchAggregatorService:
                 }
         
         # 악기 마스터에서도 기준가 검색 (유저 매물이 없을 경우)
+        # best_match가 있으면 우선 사용
+        if reference_info is None and best_match:
+            instrument = best_match[0]
+            if instrument.reference_price > 0:
+                reference_info = {
+                    'name': str(instrument),
+                    'price': instrument.reference_price,
+                    'image_url': instrument.image_url,
+                }
+
+        # 그래도 없으면 DB 검색
         if reference_info is None:
             instrument = Instrument.objects.filter(
                 models.Q(name__icontains=query) |
                 models.Q(brand__icontains=query)
             ).first()
-            
+
             if instrument and instrument.reference_price > 0:
                 reference_info = {
                     'name': str(instrument),

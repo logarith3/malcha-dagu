@@ -10,6 +10,7 @@ const api = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    withCredentials: true,  // SSO 쿠키 전송 필수
 });
 
 // =============================================================================

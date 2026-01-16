@@ -4,6 +4,7 @@ Production-ready configuration with environment variables.
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -26,7 +27,9 @@ if env_file.exists():
 # Core Settings
 # =============================================================================
 
-SECRET_KEY = env('SECRET_KEY', default='django-insecure-dev-key-change-in-production')
+# SSO: Malcha와 동일한 SECRET_KEY 사용 (JWT 서명 검증)
+# 프로덕션에서는 SHARED_SECRET_KEY 환경변수 필수
+SECRET_KEY = env('SHARED_SECRET_KEY', default=env('SECRET_KEY', default='django-insecure-dev-key-change-in-production'))
 DEBUG = env('DEBUG')
 ALLOWED_HOSTS = env('ALLOWED_HOSTS')
 
@@ -43,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Third-party
     'rest_framework',
+    'rest_framework_simplejwt',  # SSO: JWT 검증
     'corsheaders',
     # Local apps
     'dagu',
@@ -58,12 +62,14 @@ except ImportError:
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # Must be before CommonMiddleware
     'django.middleware.security.SecurityMiddleware',
+    'config.middleware.SecurityHeadersMiddleware',  # 커스텀 보안 헤더
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'config.middleware.RequestLoggingMiddleware',  # 보안 로깅
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -145,6 +151,18 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    # Rate Limiting (프로덕션 환경에서 API 남용 방지)
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',      # 비인증 사용자: 시간당 100회
+        'user': '1000/hour',     # 인증 사용자: 시간당 1000회
+        'search': '60/minute',   # 검색 API: 분당 60회
+    },
+    # 전역 예외 핸들러 (표준화된 에러 응답)
+    'EXCEPTION_HANDLER': 'dagu.exceptions.custom_exception_handler',
 }
 
 # Add BrowsableAPI in debug mode
@@ -154,17 +172,66 @@ if DEBUG:
     )
 
 # =============================================================================
+# SSO: JWT 쿠키 인증 설정 (Malcha 발급 JWT 검증)
+# =============================================================================
+
+# 서브도메인 쿠키 공유를 위한 도메인 설정 (점(.) 접두사 필수)
+COOKIE_DOMAIN = '.malchalab.com' if not DEBUG else None
+
+# SimpleJWT 설정 (Malcha와 동일한 설정으로 검증)
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,  # Malcha와 동일한 키
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    # SSO: Malcha가 발급한 쿠키명
+    "AUTH_COOKIE": "malcha-access-token",
+    "AUTH_COOKIE_DOMAIN": COOKIE_DOMAIN,
+    "AUTH_COOKIE_SECURE": not DEBUG,
+    "AUTH_COOKIE_HTTP_ONLY": True,
+    "AUTH_COOKIE_SAMESITE": "Lax",
+
+    # SSO 보안: 토큰 발급자/수신자 검증 (Malcha 설정과 일치해야 함)
+    "ISSUER": "malchalab.com",  # 토큰 발급자 검증
+    "AUDIENCE": "dagu.malchalab.com",  # Dagu가 허용된 수신자인지 확인
+
+    # 추가 보안 설정
+    "JTI_CLAIM": "jti",
+    "TOKEN_TYPE_CLAIM": "token_type",
+    "USER_ID_CLAIM": "user_id",
+}
+
+# JWT 쿠키 인증 클래스 추가
+REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
+    'dagu.authentication.JWTCookieAuthentication',
+]
+
+# =============================================================================
 # CORS Settings
 # =============================================================================
 
+# 환경 변수에서 CORS 도메인 로드 (쉼표로 구분)
+# 예: CORS_ORIGINS=https://example.com,https://www.example.com
+_cors_origins_env = env('CORS_ORIGINS', default='')
+_cors_origins_from_env = [origin.strip() for origin in _cors_origins_env.split(',') if origin.strip()]
+
+# 기본 개발 환경 도메인 + 환경 변수 도메인
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://localhost:5173',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5173',
-]
+] + _cors_origins_from_env
+
+# 프로덕션 환경에서는 개발 도메인 제거
+if not DEBUG:
+    CORS_ALLOWED_ORIGINS = _cors_origins_from_env if _cors_origins_from_env else CORS_ALLOWED_ORIGINS
 
 CORS_ALLOW_CREDENTIALS = True
+
+# CORS preflight 캐싱 (성능 최적화)
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24시간
 
 # =============================================================================
 # Password validation
@@ -208,6 +275,50 @@ NAVER_CLIENT_SECRET = env('NAVER_CLIENT_SECRET', default='')
 OPENAI_API_KEY = env('OPENAI_API_KEY', default='')
 
 # =============================================================================
+# Security Settings (Production)
+# =============================================================================
+
+# SSO: 서브도메인 쿠키 공유
+SESSION_COOKIE_DOMAIN = COOKIE_DOMAIN
+CSRF_COOKIE_DOMAIN = COOKIE_DOMAIN
+
+# CSRF 신뢰 출처 (SSO)
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS = [
+        'http://localhost:5173', 'http://127.0.0.1:5173',  # Malcha frontend
+        'http://localhost:3000', 'http://127.0.0.1:3000',  # Dagu frontend
+    ]
+else:
+    CSRF_TRUSTED_ORIGINS = [
+        'https://malchalab.com',
+        'https://www.malchalab.com',
+        'https://dagu.malchalab.com',
+    ]
+
+if not DEBUG:
+    # HTTPS 강제
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+    # HSTS (HTTP Strict Transport Security)
+    SECURE_HSTS_SECONDS = 31536000  # 1년
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    # Cookie 보안
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = True
+
+    # XSS 방지
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
+    # Clickjacking 방지
+    X_FRAME_OPTIONS = 'DENY'
+
+# =============================================================================
 # Logging
 # =============================================================================
 
@@ -247,7 +358,7 @@ LOGGING = {
         },
         'dagu.filters': {
             'handlers': ['console'],
-            'level': 'INFO',
+            'level': 'DEBUG',  # 필터 탈락 로그 활성화
             'propagate': False,
         },
     },

@@ -1,0 +1,364 @@
+"""
+Search utility functions for MALCHA-DAGU.
+
+Provides search term normalization, alias expansion, and instrument matching.
+"""
+
+from __future__ import annotations
+
+import logging
+import re
+from difflib import SequenceMatcher
+from functools import lru_cache
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+    from ..models import Instrument
+
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Cached Config Accessors (성능 최적화)
+# =============================================================================
+
+@lru_cache(maxsize=1)
+def _get_model_aliases() -> dict[str, str]:
+    """MODEL_ALIASES 캐시 로드"""
+    from ..config import CategoryConfig
+    return getattr(CategoryConfig, 'MODEL_ALIASES', {})
+
+
+@lru_cache(maxsize=1)
+def _get_brand_mapping() -> dict[str, str]:
+    """BRAND_NAME_MAPPING 캐시 로드"""
+    from ..config import CategoryConfig
+    return getattr(CategoryConfig, 'BRAND_NAME_MAPPING', {})
+
+
+@lru_cache(maxsize=1)
+def _get_guitar_brands() -> list[str]:
+    """GUITAR_BRANDS 캐시 로드"""
+    from ..config import CategoryConfig
+    return getattr(CategoryConfig, 'GUITAR_BRANDS', [])
+
+
+def clear_config_cache() -> None:
+    """설정 캐시 초기화 (설정 변경 시 호출)"""
+    _get_model_aliases.cache_clear()
+    _get_brand_mapping.cache_clear()
+    _get_guitar_brands.cache_clear()
+
+
+# =============================================================================
+# Brand Normalization (통합 브랜드 처리)
+# =============================================================================
+
+# 알려진 브랜드 목록 (카테고리 추론용)
+KNOWN_BRANDS = [
+    'boss', 'ibanez', 'jackson', 'charvel', 'schecter', 'suhr',
+    'mesa', 'vox', 'marshall', 'orange', 'ampeg', 'tc electronic',
+]
+
+
+def normalize_brand(query: str) -> str:
+    """
+    검색어에서 한글 브랜드를 영문으로 변환.
+
+    Examples:
+        >>> normalize_brand("펜더 스트랫")
+        'fender 스트랫'
+        >>> normalize_brand("boss ds-1")
+        'boss ds-1'
+
+    Args:
+        query: 검색어
+
+    Returns:
+        영문 브랜드로 치환된 검색어
+    """
+    brand_mapping = _get_brand_mapping()
+    result = query
+
+    for kr_name, en_brand in brand_mapping.items():
+        if kr_name in query:
+            result = query.replace(kr_name, en_brand)
+            logger.debug(f"[Brand] 정규화: '{query}' -> '{result}'")
+            break
+
+    return result
+
+
+def extract_brand(query: str) -> str | None:
+    """
+    검색어에서 브랜드 추출.
+
+    Examples:
+        >>> extract_brand("펜더 스트랫")
+        'fender'
+        >>> extract_brand("BOSS DS-1")
+        'boss'
+
+    Args:
+        query: 검색어
+
+    Returns:
+        추출된 브랜드 (소문자) 또는 None
+    """
+    query_lower = query.lower()
+
+    # 한글 브랜드 매핑 체크
+    brand_mapping = _get_brand_mapping()
+    for kr_name, en_brand in brand_mapping.items():
+        if kr_name in query_lower:
+            return en_brand
+
+    # 알려진 브랜드 목록에서 찾기
+    guitar_brands = _get_guitar_brands()
+    all_brands = guitar_brands + KNOWN_BRANDS
+
+    for brand in all_brands:
+        if brand in query_lower:
+            return brand
+
+    # 첫 단어를 브랜드로 가정 (2글자 이상)
+    words = query.split()
+    if words and len(words[0]) > 2:
+        return words[0].lower()
+
+    return None
+
+
+# =============================================================================
+# Search Term Normalization
+# =============================================================================
+
+def normalize_search_term(term: str) -> str:
+    """
+    검색어 정규화: 대소문자, 하이픈, 공백 통일.
+
+    Examples:
+        >>> normalize_search_term("DS-1")
+        'ds1'
+        >>> normalize_search_term("ds 1")
+        'ds1'
+        >>> normalize_search_term("Les Paul")
+        'lespaul'
+
+    Args:
+        term: 원본 검색어
+
+    Returns:
+        정규화된 검색어 (소문자, 특수문자 제거)
+    """
+    if not term:
+        return ""
+
+    result = term.lower().strip()
+    # 하이픈, 언더스코어, 공백 제거
+    result = re.sub(r'[-_\s]+', '', result)
+    return result
+
+
+def tokenize_query(query: str) -> list[str]:
+    """
+    검색어를 토큰으로 분리.
+
+    Examples:
+        >>> tokenize_query("boss ds-1")
+        ['boss', 'ds-1', 'ds1']
+        >>> tokenize_query("Fender Strat")
+        ['fender', 'strat']
+
+    Args:
+        query: 검색어
+
+    Returns:
+        토큰 리스트 (원본 + 정규화된 버전)
+    """
+    tokens = []
+    words = query.lower().strip().split()
+
+    for word in words:
+        tokens.append(word)
+        # 하이픈 제거 버전도 추가 (ds-1 -> ds1)
+        normalized = re.sub(r'[-_]+', '', word)
+        if normalized != word:
+            tokens.append(normalized)
+
+    return list(set(tokens))
+
+
+def expand_query_with_aliases(query: str) -> list[str]:
+    """
+    검색어를 별칭 매핑으로 확장.
+
+    Examples:
+        >>> expand_query_with_aliases("ds1")
+        ['ds1', 'DS-1']
+        >>> expand_query_with_aliases("strat")
+        ['strat', 'Stratocaster']
+
+    Args:
+        query: 검색어
+
+    Returns:
+        확장된 검색어 리스트 (원본 + 별칭 매핑된 정식명)
+    """
+    aliases = _get_model_aliases()
+    expanded = [query]
+
+    query_lower = query.lower().strip()
+    query_normalized = normalize_search_term(query)
+
+    # 정규화된 검색어로 별칭 찾기
+    if query_normalized in aliases:
+        expanded.append(aliases[query_normalized])
+
+    # 원본 검색어(소문자)로도 별칭 찾기
+    if query_lower in aliases:
+        expanded.append(aliases[query_lower])
+
+    # 각 토큰별로 별칭 확장
+    for token in query_lower.split():
+        token_norm = normalize_search_term(token)
+        if token_norm in aliases:
+            expanded.append(aliases[token_norm])
+        if token in aliases:
+            expanded.append(aliases[token])
+
+    return list(set(expanded))
+
+
+# =============================================================================
+# Instrument Matching
+# =============================================================================
+
+def calculate_instrument_match_score(query: str, instrument: Instrument) -> float:
+    """
+    검색어와 악기의 매칭 스코어 계산.
+
+    Scoring Tiers:
+        1.0  - 별칭/정규화 정확 일치
+        0.95 - 전체 이름 일치 또는 별칭 포함
+        0.9  - 모델명이 검색어에 포함
+        0.7  - 검색어가 모델명에 포함 (길이 비율 적용)
+        0.6  - 토큰 기반 매칭
+        0.5  - 유사도 기반 매칭
+
+    Args:
+        query: 검색어
+        instrument: Instrument 모델 인스턴스
+
+    Returns:
+        0.0 ~ 1.0 사이의 매칭 스코어
+    """
+    query_normalized = normalize_search_term(query)
+    query_tokens = tokenize_query(query)
+    expanded_queries = expand_query_with_aliases(query)
+
+    name = instrument.name or ""
+    brand = instrument.brand or ""
+    name_normalized = normalize_search_term(name)
+    brand_normalized = normalize_search_term(brand)
+    full_name = f"{brand} {name}".strip()
+    full_normalized = normalize_search_term(full_name)
+
+    # Tier 0: 별칭 확장된 쿼리로 정확 매칭
+    for expanded in expanded_queries:
+        expanded_norm = normalize_search_term(expanded)
+        if expanded_norm == name_normalized:
+            logger.debug(f"[Score 1.0] 별칭 정확 일치: '{expanded}' == '{name}'")
+            return 1.0
+        if expanded.lower() in name.lower():
+            logger.debug(f"[Score 0.95] 별칭 포함: '{expanded}' in '{name}'")
+            return 0.95
+
+    # Tier 1: 정규화된 모델명 정확 일치
+    if query_normalized == name_normalized:
+        logger.debug(f"[Score 1.0] 정확 일치: '{query}' == '{name}'")
+        return 1.0
+
+    # Tier 2: 전체 이름(브랜드+모델) 정확 일치
+    if query_normalized == full_normalized:
+        logger.debug(f"[Score 0.95] 전체 일치: '{query}' == '{full_name}'")
+        return 0.95
+
+    # Tier 3: 모델명이 검색어에 포함
+    if name_normalized and name_normalized in query_normalized:
+        logger.debug(f"[Score 0.9] 모델명 포함: '{name}' in '{query}'")
+        return 0.9
+
+    # Tier 4: 검색어가 모델명에 포함 (길이 비율 적용)
+    if query_normalized and query_normalized in name_normalized:
+        length_ratio = len(query_normalized) / len(name_normalized) if name_normalized else 0
+        score = max(0.7 * length_ratio, 0.3)
+        logger.debug(f"[Score {score:.2f}] 부분 포함: '{query}' in '{name}'")
+        return score
+
+    # Tier 5: 토큰 기반 매칭
+    all_tokens = query_tokens.copy()
+    for expanded in expanded_queries:
+        all_tokens.extend(tokenize_query(expanded))
+    all_tokens = list(set(all_tokens))
+
+    matched_tokens = sum(
+        1 for token in all_tokens
+        if normalize_search_term(token) in name_normalized
+        or normalize_search_term(token) in brand_normalized
+    )
+
+    if matched_tokens > 0 and all_tokens:
+        score = 0.6 * (matched_tokens / len(all_tokens))
+        logger.debug(f"[Score {score:.2f}] 토큰 매칭: {matched_tokens}/{len(all_tokens)}")
+        return score
+
+    # Tier 6: 유사도 기반 매칭 (fallback)
+    similarity = SequenceMatcher(None, query_normalized, name_normalized).ratio()
+    if similarity > 0.6:
+        score = 0.5 * similarity
+        logger.debug(f"[Score {score:.2f}] 유사도: {similarity:.2f}")
+        return score
+
+    return 0.0
+
+
+def find_best_matching_instruments(
+    query: str,
+    instruments_qs: QuerySet[Instrument],
+    min_score: float = 0.3,
+) -> list[tuple[Instrument, float]]:
+    """
+    검색어에 가장 잘 맞는 악기들을 스코어 순으로 반환.
+
+    Args:
+        query: 검색어
+        instruments_qs: Instrument QuerySet
+        min_score: 최소 스코어 (이하는 제외)
+
+    Returns:
+        (instrument, score) 튜플 리스트, 스코어 내림차순 정렬
+    """
+    scored_instruments = [
+        (instrument, calculate_instrument_match_score(query, instrument))
+        for instrument in instruments_qs
+    ]
+
+    # 최소 스코어 이상만 필터링
+    scored_instruments = [
+        (inst, score) for inst, score in scored_instruments
+        if score >= min_score
+    ]
+
+    # 스코어 내림차순 정렬
+    scored_instruments.sort(key=lambda x: x[1], reverse=True)
+
+    if scored_instruments:
+        best = scored_instruments[0]
+        logger.info(
+            f"[매칭 결과] query='{query}' -> "
+            f"Best: {best[0].brand} {best[0].name} (score={best[1]:.2f})"
+        )
+
+    return scored_instruments
