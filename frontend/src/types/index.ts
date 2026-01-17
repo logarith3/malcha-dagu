@@ -36,9 +36,12 @@ export interface UserItem {
     title: string;
     is_active: boolean;
     expired_at: string;
+    extended_at: string | null;
     click_count: number;
     discount_rate: number;
     is_expired: boolean;
+    is_owner: boolean;
+    owner_id: number | null;
     created_at: string;
     updated_at: string;
 }
@@ -57,6 +60,7 @@ export interface NaverItem {
 
 export interface SearchResult {
     query: string;
+    search_query: string;  // 정규화된 검색어 (외부 링크용)
     total_count: number;
     reference: {
         name: string;
@@ -80,7 +84,20 @@ export interface MergedUserItem {
     instrument_id: string;
     instrument_name: string;
     instrument_brand: string;
+    extended_at: string | null;
+    report_count: number;
 }
+
+// 신고 사유 타입
+export type ReportReason = 'wrong_price' | 'sold_out' | 'fake' | 'inappropriate' | 'other';
+
+export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
+    wrong_price: '가격이 다릅니다',
+    sold_out: '이미 판매완료된 매물입니다',
+    fake: '허위/사기 매물입니다',
+    inappropriate: '부적절한 내용입니다',
+    other: '기타',
+};
 
 export interface AIDescription {
     summary: string;
@@ -102,6 +119,11 @@ export interface ItemCardProps {
     rank?: number;
     referencePrice?: number;
     onClick?: () => void;
+    isOwner?: boolean;
+    isLoggedIn?: boolean;
+    onExtend?: () => void;
+    onReport?: (reason: ReportReason, detail?: string) => void;
+    onUpdatePrice?: (newPrice: number) => void;
 }
 
 export interface LoaderProps {

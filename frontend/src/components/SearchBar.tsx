@@ -28,54 +28,59 @@ interface Instrument {
 export default function SearchBar({
     onSearch,
     isLoading = false,
-    placeholder = '악기 이름으로 검색 (예: Fender Stratocaster)',
+    placeholder = '악기 이름으로 검색 (예: 펜더 스트랫)',
     initialValue = '',
     showSuggestions = true,
 }: SearchBarProps) {
     const [query, setQuery] = useState(initialValue);
     const [isFocused, setIsFocused] = useState(false);
-    const [instruments, setInstruments] = useState<Instrument[]>([]);
     const [suggestions, setSuggestions] = useState<Instrument[]>([]);
     const [showDropdown, setShowDropdown] = useState(false);
     const wrapperRef = useRef<HTMLDivElement>(null);
 
-    // DB에서 악기 목록 로드 (최초 1회)
+    // 검색어 변경 시 서버 검색 (Debounce 적용)
     useEffect(() => {
-        async function fetchInstruments() {
-            try {
-                const res = await fetch('/api/instruments/');
-                if (res.ok) {
-                    const data = await res.json();
-                    // DRF 페이지네이션 응답 처리 (results 배열)
-                    const results = data.results || data;
-                    setInstruments(Array.isArray(results) ? results : []);
-                }
-            } catch (error) {
-                console.error('악기 목록 로드 실패:', error);
-            }
-        }
-        fetchInstruments();
-    }, []);
-
-    // 입력에 따른 추천 필터링
-    useEffect(() => {
-        if (query.trim().length > 0 && showSuggestions && instruments.length > 0) {
-            const queryLower = query.toLowerCase();
-            const filtered = instruments.filter(item => {
-                const brand = item.brand || '';
-                const modelName = item.name || '';
-                const fullName = `${brand} ${modelName}`.toLowerCase();
-                return fullName.includes(queryLower) ||
-                    brand.toLowerCase().includes(queryLower) ||
-                    modelName.toLowerCase().includes(queryLower);
-            }).slice(0, 6); // 최대 6개
-            setSuggestions(filtered);
-            setShowDropdown(filtered.length > 0 && isFocused);
-        } else {
+        const trimmedQuery = query.trim();
+        if (!trimmedQuery || !showSuggestions) {
             setSuggestions([]);
             setShowDropdown(false);
+            return;
         }
-    }, [query, isFocused, showSuggestions, instruments]);
+
+        const timer = setTimeout(async () => {
+            try {
+                // 서버에서 검색 (브랜드/모델명 포함)
+                // api.ts의 getInstruments는 { search: string } 파라미터를 지원함
+                const { getInstruments } = await import('../services/api');
+                const results = await getInstruments({ search: trimmedQuery });
+
+                // 최대 6개만 표시
+                setSuggestions(results.slice(0, 6));
+
+                // 검색 결과가 있고 포커스 상태면 드롭다운 표시
+                if (results.length > 0 && isFocused) {
+                    setShowDropdown(true);
+                }
+            } catch (error) {
+                console.error('추천 검색어 로드 실패:', error);
+            }
+        }, 300); // 300ms 딜레이
+
+        return () => clearTimeout(timer);
+    }, [query, showSuggestions]);
+
+    // 포커스 상태에 따른 드롭다운 표시 제어
+    useEffect(() => {
+        if (isFocused && suggestions.length > 0) {
+            setShowDropdown(true);
+        } else if (!isFocused) {
+            // blur 시에는 handleSuggestionClick 등을 위해 약간의 지연 후 닫힘 (onBlur에서 처리됨) 또는 즉시 닫힘
+            // 여기서는 onBlur가 처리하므로 추가 동작 불필요, 
+            // 다만 isFocused가 false로 바뀌면 드롭다운을 닫는게 안전함 (onBlur의 timeout과 별개로)
+            const timer = setTimeout(() => setShowDropdown(false), 200);
+            return () => clearTimeout(timer);
+        }
+    }, [isFocused, suggestions]);
 
     // 외부 클릭 시 드롭다운 닫기
     useEffect(() => {
@@ -126,10 +131,10 @@ export default function SearchBar({
             <div ref={wrapperRef} className="relative">
                 <div
                     className={`
-                        relative flex items-center gap-2 p-2 rounded-2xl transition-all duration-300
+                        relative flex items-center gap-2 p-3 rounded-full transition-all duration-300
                         ${isFocused
-                            ? 'bg-white shadow-lg shadow-matcha-500/20 ring-2 ring-matcha-400'
-                            : 'bg-white/80 shadow-md hover:shadow-lg border border-stone-100'
+                            ? 'bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-2 ring-matcha-500 transform -translate-y-1'
+                            : 'bg-white shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.12)] hover:-translate-y-0.5'
                         }
                     `}
                     style={{ backdropFilter: 'blur(8px)' }}
@@ -175,11 +180,11 @@ export default function SearchBar({
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         className={`
-                            px-6 py-3 rounded-xl font-medium text-white
+                            px-8 py-4 rounded-xl font-bold text-lg text-white
                             transition-all duration-200
                             ${isLoading
                                 ? 'bg-stone-300 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-matcha-500 to-matcha-600 hover:from-matcha-600 hover:to-matcha-700 shadow-md hover:shadow-lg hover:shadow-matcha-500/30'
+                                : 'bg-[#10B981] hover:bg-[#059669] shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/40 hover:scale-105 active:scale-95'
                             }
                         `}
                     >

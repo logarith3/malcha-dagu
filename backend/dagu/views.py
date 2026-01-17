@@ -4,11 +4,12 @@ API Views for MALCHA-DAGU.
 
 import logging
 
+from django.core.cache import cache
 from django.db import models, transaction
-
-logger = logging.getLogger(__name__)
 from django.db.models import F
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticatedOrReadOnly
@@ -16,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from .models import Instrument, UserItem
+from .models import Instrument, ItemReport, SearchQuery, UserItem
 from .serializers import (
     AIDescriptionRequestSerializer,
     AIDescriptionResponseSerializer,
@@ -64,10 +65,14 @@ class SearchView(APIView):
     네이버 쇼핑 + DB 유저 매물을 가격순으로 병합.
 
     GET /api/search/?q={검색어}&display={개수}
+
+    캐싱: 동일 검색어는 3분간 캐시 (네이버 API 호출 최소화)
     """
     permission_classes = [AllowAny]  # 인증 없이 검색 가능
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'search'
+
+    CACHE_TTL = 60 * 3  # 3분
 
     def get(self, request):
         query = request.query_params.get('q', '').strip()
@@ -92,6 +97,15 @@ class SearchView(APIView):
             display = 20
         display = min(max(display, 1), 100)  # 1~100 범위 제한
 
+        # 캐시 키 생성 (소문자 정규화)
+        cache_key = f"search:{query.lower()}:{display}"
+
+        # 캐시 확인
+        cached_result = cache.get(cache_key)
+        if cached_result:
+            logger.debug(f"[Cache HIT] {cache_key}")
+            return Response(cached_result)
+
         # 통합 검색 수행
         try:
             service = SearchAggregatorService()
@@ -103,8 +117,77 @@ class SearchView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+        # 검색어 추적 (비동기적으로 처리해도 좋음)
+        self._track_search_query(query)
+
         serializer = SearchResultSerializer(result)
-        return Response(serializer.data)
+        response_data = serializer.data
+
+        # 캐시 저장
+        cache.set(cache_key, response_data, self.CACHE_TTL)
+        logger.debug(f"[Cache SET] {cache_key} (TTL: {self.CACHE_TTL}s)")
+
+        return Response(response_data)
+
+    def _track_search_query(self, query: str):
+        """검색어 카운트 증가 (중복 시 업데이트)"""
+        try:
+            normalized = query.strip().lower()
+            if len(normalized) < 2:
+                return  # 너무 짧은 검색어 무시
+
+            obj, created = SearchQuery.objects.get_or_create(
+                query__iexact=normalized,
+                defaults={'query': query}
+            )
+            if not created:
+                # 검색 횟수 증가 + 최근 검색 시간 갱신
+                # + 디스플레이용 쿼리(대소문자)를 최신으로 업데이트 (예: fender -> Fender)
+                SearchQuery.objects.filter(pk=obj.pk).update(
+                    search_count=F('search_count') + 1,
+                    last_searched_at=timezone.now(),
+                    query=query  # 최신 케이싱 반영
+                )
+        except Exception as e:
+            logger.warning(f"Failed to track search query: {e}")
+
+
+class PopularSearchView(APIView):
+    """
+    인기 검색어 API.
+    최근 7일간 가장 많이 검색된 검색어 반환.
+
+    GET /api/popular-searches/?limit=4
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from datetime import timedelta
+
+        # 파라미터
+        try:
+            limit = int(request.query_params.get('limit', 4))
+        except (ValueError, TypeError):
+            limit = 4
+        limit = min(max(limit, 1), 10)  # 1~10 범위
+
+        # 최근 7일간 인기 검색어
+        week_ago = timezone.now() - timedelta(days=7)
+        popular = SearchQuery.objects.filter(
+            last_searched_at__gte=week_ago
+        ).order_by('-search_count')[:limit]
+
+        # 검색어만 반환
+        terms = [item.query for item in popular]
+
+        # 결과가 부족하면 기본값 추가
+        defaults = ['펜더 스트랫', '깁슨 레스폴', '테일러 어쿠스틱', 'SM58']
+        while len(terms) < limit:
+            for d in defaults:
+                if d not in terms and len(terms) < limit:
+                    terms.append(d)
+
+        return Response({'terms': terms})
 
 
 # =============================================================================
@@ -168,7 +251,7 @@ class UserItemViewSet(viewsets.ModelViewSet):
     POST   /api/items/{id}/click/   - 클릭 추적 (모두 허용)
     """
 
-    queryset = UserItem.objects.filter(is_active=True)
+    queryset = UserItem.objects.filter(is_active=True, is_under_review=False)
 
     def get_permissions(self):
         """액션별 권한 분기"""
@@ -226,26 +309,118 @@ class UserItemViewSet(viewsets.ModelViewSet):
         logger.debug(f"create success, response: {response.data}")
         return response
 
+    # 허용된 중고거래 사이트 도메인
+    ALLOWED_DOMAINS = [
+        'mule.co.kr',           # 뮬
+        'bunjang.co.kr',        # 번개장터
+        'daangn.com',           # 당근마켓
+        'danggeun.com',         # 당근마켓 (구 도메인)
+        'cafe.naver.com',       # 중고나라 (네이버 카페)
+        'joongna.com',          # 중고나라
+        'secondhand.co.kr',     # 세컨핸드
+    ]
+
+    def _is_allowed_link(self, link: str) -> bool:
+        """허용된 도메인인지 확인"""
+        from urllib.parse import urlparse
+        try:
+            parsed = urlparse(link.lower())
+            domain = parsed.netloc
+            return any(allowed in domain for allowed in self.ALLOWED_DOMAINS)
+        except Exception:
+            return False
+
     def perform_create(self, serializer):
         """
         매물 생성 시 악기 정보를 자동으로 연결합니다.
-        1. 이름이 일치하는 악기가 있으면 연결
-        2. 없으면 새로운 악기(Unknown 브랜드) 생성 후 연결
+        - 허용된 사이트만 등록 가능
+        - 트랜잭션으로 원자성 보장
+        - 링크 중복 체크
+        - 브랜드/카테고리 자동 추출
+        - 브랜드를 이름에서 분리 (BOSS DS-1 → brand: BOSS, name: DS-1)
         """
+        import re
+        from rest_framework.exceptions import ValidationError
+        from .services.utils import extract_brand, detect_category
+
         title = serializer.validated_data.get('title', '').strip()
-        
-        # 악기 찾기 또는 생성
-        instrument = Instrument.objects.filter(name__iexact=title).first()
-        
-        if not instrument:
-            instrument = Instrument.objects.create(
-                name=title,
-                brand='Unknown',
-                category='other'
+        link = serializer.validated_data.get('link', '').strip()
+        brand = (extract_brand(title) or 'Unknown').upper()
+        category = detect_category(title)
+
+        # 허용된 사이트 검증
+        if not self._is_allowed_link(link):
+            raise ValidationError({
+                'link': '허용되지 않은 사이트입니다. (뮬, 번개장터, 당근마켓, 중고나라만 가능)'
+            })
+
+        # 브랜드를 이름에서 제거 (BOSS DS-1 → DS-1)
+        if brand != 'UNKNOWN':
+            # 대소문자 무시하고 브랜드 제거
+            name = re.sub(rf'^{re.escape(brand)}\s*', '', title, flags=re.IGNORECASE).strip()
+            if not name:  # 브랜드만 있는 경우 원본 유지
+                name = title
+        else:
+            name = title
+
+        # 링크 중복 체크 (활성 매물 중)
+        if UserItem.objects.filter(link=link, is_active=True).exists():
+            raise ValidationError({'link': '이미 등록된 매물입니다.'})
+
+        with transaction.atomic():
+            # select_for_update로 race condition 방지
+            instrument = Instrument.objects.select_for_update().filter(
+                name__iexact=name,
+                brand__iexact=brand
+            ).first()
+
+            if not instrument:
+                # Unknown 브랜드 악기 업데이트 또는 새로 생성
+                instrument = Instrument.objects.select_for_update().filter(
+                    name__iexact=name
+                ).first()
+
+                if instrument and instrument.brand == 'Unknown' and brand != 'UNKNOWN':
+                    instrument.brand = brand
+                    if instrument.category == 'other':
+                        instrument.category = category
+                    instrument.save(update_fields=['brand', 'category'])
+                elif not instrument:
+                    instrument = Instrument.objects.create(
+                        name=name,
+                        brand=brand,
+                        category=category
+                    )
+
+            # owner_id 저장 (JWT user_id)
+            owner_id = self.request.user.id if self.request.user.is_authenticated else None
+            serializer.save(instrument=instrument, owner_id=owner_id)
+
+    @action(detail=True, methods=['post'])
+    def extend(self, request, pk=None):
+        """
+        유효기간 연장 API (본인 매물만)
+        - JWT user_id로 소유자 검증
+        - expired_at 72시간 연장
+        - extended_at 기록 (우선순위용)
+        """
+        item = self.get_object()
+
+        # 소유자 검증 (JWT user_id vs owner_id)
+        if not request.user.is_authenticated or item.owner_id != request.user.id:
+            return Response(
+                {'error': '본인 매물만 연장 가능합니다.'},
+                status=status.HTTP_403_FORBIDDEN
             )
-            
-        serializer.save(instrument=instrument)
-    
+
+        with transaction.atomic():
+            item.expired_at = timezone.now() + timezone.timedelta(hours=72)
+            item.extended_at = timezone.now()
+            item.save(update_fields=['expired_at', 'extended_at'])
+
+        serializer = self.get_serializer(item)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['post'])
     def click(self, request, pk=None):
         """
@@ -254,16 +429,159 @@ class UserItemViewSet(viewsets.ModelViewSet):
         - expired_at 12시간 연장
         """
         item = self.get_object()
-        
+
         with transaction.atomic():
             # Atomic update로 click_count 증가
             UserItem.objects.filter(pk=pk).update(
                 click_count=F('click_count') + 1,
                 expired_at=timezone.now() + timezone.timedelta(hours=12),
             )
-        
+
         # 갱신된 데이터 반환
         item.refresh_from_db()
+        serializer = self.get_serializer(item)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def report(self, request, pk=None):
+        """
+        허위 매물 신고 API (로그인 불필요, 세션 기반)
+        - 로그인 유저: reporter_id로 중복 체크
+        - 비로그인 유저: session_key로 중복 체크
+        - 'wrong_price' 3회 이상 → 자동 삭제 (is_active=False)
+        - 기타 사유 3회 이상 → 검토 중 상태
+        """
+        item = self.get_object()
+
+        # 세션 키 확보 (없으면 생성)
+        if not request.session.session_key:
+            request.session.create()
+        session_key = request.session.session_key
+
+        # 본인 매물 신고 방지 (로그인 유저만)
+        if request.user.is_authenticated and item.owner_id == request.user.id:
+            return Response(
+                {'error': '본인 매물은 신고할 수 없습니다.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        reason = request.data.get('reason', 'other')
+        detail = request.data.get('detail', '')
+
+        # 유효한 사유인지 확인
+        valid_reasons = [choice[0] for choice in ItemReport.REASON_CHOICES]
+        if reason not in valid_reasons:
+            reason = 'other'
+
+        # 중복 신고 체크
+        if request.user.is_authenticated:
+            exists = ItemReport.objects.filter(
+                item=item, reporter_id=request.user.id
+            ).exists()
+        else:
+            exists = ItemReport.objects.filter(
+                item=item, session_key=session_key
+            ).exists()
+
+        if exists:
+            return Response(
+                {'error': '이미 신고한 매물입니다.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            with transaction.atomic():
+                # 신고 생성
+                ItemReport.objects.create(
+                    item=item,
+                    reporter_id=request.user.id if request.user.is_authenticated else None,
+                    session_key=session_key if not request.user.is_authenticated else None,
+                    reason=reason,
+                    detail=detail[:500]
+                )
+
+                # 신고 횟수 증가
+                UserItem.objects.filter(pk=pk).update(
+                    report_count=F('report_count') + 1
+                )
+                item.refresh_from_db()
+
+                # 'wrong_price' 3회 이상 → 자동 삭제
+                wrong_price_count = ItemReport.objects.filter(
+                    item=item, reason='wrong_price'
+                ).count()
+
+                is_deleted = False
+                if wrong_price_count >= 3:
+                    item.is_active = False
+                    item.save(update_fields=['is_active'])
+                    is_deleted = True
+                    logger.info(f"Item {pk} auto-deleted (wrong_price count: {wrong_price_count})")
+                # 기타 사유 3회 이상 → 검토 중
+                elif item.report_count >= 3:
+                    item.is_under_review = True
+                    item.save(update_fields=['is_under_review'])
+                    logger.info(f"Item {pk} marked for review (report_count: {item.report_count})")
+
+            return Response({
+                'message': '신고가 접수되었습니다.' + (' 해당 매물이 삭제되었습니다.' if is_deleted else ''),
+                'report_count': item.report_count,
+                'is_under_review': item.is_under_review,
+                'is_deleted': is_deleted
+            })
+
+        except Exception as e:
+            logger.exception(f"Report error for item {pk}: {e}")
+            return Response(
+                {'error': '신고 처리 중 오류가 발생했습니다.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['post'])
+    def update_price(self, request, pk=None):
+        """
+        가격 업데이트 API (로그인 필수)
+        - 가격 변동 사항을 유저가 직접 수정
+        - 어뷰징 방지를 위해 로그인 필수
+        """
+        if not request.user.is_authenticated:
+            return Response(
+                {'error': '로그인이 필요합니다.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        item = self.get_object()
+
+        try:
+            new_price = int(request.data.get('price', 0))
+        except (ValueError, TypeError):
+            return Response(
+                {'error': '유효한 가격을 입력해주세요.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if new_price <= 0:
+            return Response(
+                {'error': '가격은 0보다 커야 합니다.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if new_price > 100_000_000:  # 1억원 제한
+            return Response(
+                {'error': '가격이 너무 높습니다.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 가격 업데이트 (누가 수정했는지 로깅)
+        old_price = item.price
+        item.price = new_price
+        item.save(update_fields=['price', 'updated_at'])
+
+        logger.info(
+            f"Price updated for item {pk}: {old_price} -> {new_price} "
+            f"by user {request.user.id}"
+        )
+
         serializer = self.get_serializer(item)
         return Response(serializer.data)
 

@@ -49,17 +49,19 @@ def clear_config_cache() -> None:
     _get_model_aliases.cache_clear()
     _get_brand_mapping.cache_clear()
     _get_guitar_brands.cache_clear()
+    _get_known_brands.cache_clear()
+    _get_category_keywords.cache_clear()
 
 
 # =============================================================================
 # Brand Normalization (통합 브랜드 처리)
 # =============================================================================
 
-# 알려진 브랜드 목록 (카테고리 추론용)
-KNOWN_BRANDS = [
-    'boss', 'ibanez', 'jackson', 'charvel', 'schecter', 'suhr',
-    'mesa', 'vox', 'marshall', 'orange', 'ampeg', 'tc electronic',
-]
+@lru_cache(maxsize=1)
+def _get_known_brands() -> list[str]:
+    """KNOWN_BRANDS 캐시 로드"""
+    from ..config import CategoryConfig
+    return getattr(CategoryConfig, 'KNOWN_BRANDS', [])
 
 
 def normalize_brand(query: str) -> str:
@@ -116,7 +118,8 @@ def extract_brand(query: str) -> str | None:
 
     # 알려진 브랜드 목록에서 찾기
     guitar_brands = _get_guitar_brands()
-    all_brands = guitar_brands + KNOWN_BRANDS
+    known_brands = _get_known_brands()
+    all_brands = guitar_brands + known_brands
 
     for brand in all_brands:
         if brand in query_lower:
@@ -128,6 +131,50 @@ def extract_brand(query: str) -> str | None:
         return words[0].lower()
 
     return None
+
+
+# =============================================================================
+# Category Detection
+# =============================================================================
+
+@lru_cache(maxsize=1)
+def _get_category_keywords() -> dict[str, list[str]]:
+    """카테고리별 키워드 캐시 로드"""
+    from ..config import CategoryConfig
+    return {
+        'bass': getattr(CategoryConfig, 'BASS_KEYWORDS', []),
+        'effect': getattr(CategoryConfig, 'PEDAL_KEYWORDS', []),
+        'amp': getattr(CategoryConfig, 'AMP_KEYWORDS', []),
+        'acoustic': getattr(CategoryConfig, 'ACOUSTIC_KEYWORDS', []),
+    }
+
+
+def detect_category(text: str) -> str:
+    """
+    텍스트에서 악기 카테고리 추론.
+
+    Examples:
+        >>> detect_category("BOSS DS-1 디스토션 페달")
+        'effect'
+        >>> detect_category("Fender Jazz Bass")
+        'bass'
+        >>> detect_category("Gibson Les Paul")
+        'guitar'
+
+    Args:
+        text: 제목 또는 검색어
+
+    Returns:
+        카테고리 ('guitar', 'bass', 'effect', 'amp', 'acoustic')
+    """
+    text_lower = text.lower()
+    keywords = _get_category_keywords()
+
+    for category, kw_list in keywords.items():
+        if any(kw in text_lower for kw in kw_list):
+            return category
+
+    return 'guitar'  # 기본값
 
 
 # =============================================================================

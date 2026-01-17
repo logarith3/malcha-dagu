@@ -82,6 +82,44 @@ export function useTrackItemClick() {
     });
 }
 
+export function useExtendUserItem() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: api.extendUserItem,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['search'] });
+            queryClient.invalidateQueries({ queryKey: ['userItems'] });
+        },
+    });
+}
+
+export function useReportItem() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, reason, detail }: { id: string; reason: string; detail?: string }) =>
+            api.reportUserItem(id, { reason, detail }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['search'] });
+            queryClient.invalidateQueries({ queryKey: ['userItems'] });
+        },
+    });
+}
+
+export function useUpdateItemPrice() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, price }: { id: string; price: number }) =>
+            api.updateItemPrice(id, price),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['search'] });
+            queryClient.invalidateQueries({ queryKey: ['userItems'] });
+        },
+    });
+}
+
 // =============================================================================
 // AI Description Hook
 // =============================================================================

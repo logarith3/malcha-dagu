@@ -35,29 +35,38 @@ class InstrumentMinimalSerializer(serializers.ModelSerializer):
 
 class UserItemSerializer(serializers.ModelSerializer):
     """유저 매물 시리얼라이저"""
-    
+
     instrument_detail = InstrumentMinimalSerializer(
-        source='instrument', 
+        source='instrument',
         read_only=True
     )
     source_display = serializers.CharField(
-        source='get_source_display', 
+        source='get_source_display',
         read_only=True
     )
     discount_rate = serializers.FloatField(read_only=True)
     is_expired = serializers.BooleanField(read_only=True)
-    
+    is_owner = serializers.SerializerMethodField()
+
     class Meta:
         model = UserItem
         fields = [
             'id', 'instrument', 'instrument_detail', 'price', 'link',
             'source', 'source_display', 'title', 'is_active',
-            'expired_at', 'click_count', 'discount_rate', 'is_expired',
+            'expired_at', 'extended_at', 'click_count', 'discount_rate',
+            'is_expired', 'is_owner', 'report_count',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'id', 'click_count', 'created_at', 'updated_at'
+            'id', 'click_count', 'extended_at', 'report_count', 'created_at', 'updated_at'
         ]
+
+    def get_is_owner(self, obj):
+        """현재 요청 유저가 소유자인지 확인"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.owner_id == request.user.id
+        return False
 
 
 class UserItemCreateSerializer(serializers.ModelSerializer):
@@ -92,11 +101,12 @@ class NaverItemSerializer(serializers.Serializer):
 
 class SearchResultSerializer(serializers.Serializer):
     """통합 검색 결과 시리얼라이저"""
-    
+
     # 검색 메타 정보
     query = serializers.CharField()
+    search_query = serializers.CharField()  # 정규화된 검색어 (외부 링크용)
     total_count = serializers.IntegerField()
-    
+
     # 신품 정보
     reference = serializers.DictField(required=False)
     

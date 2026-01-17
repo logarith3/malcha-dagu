@@ -89,9 +89,13 @@ class SearchAggregatorService:
             query, matching_instruments, best_match, display, category
         )
 
-        # Step 4: 가격순 병합
+        # Step 4: 가격순 + 연장 우선순위 병합
         all_items = naver_items + user_items
-        all_items.sort(key=lambda x: x.get('lprice', 0))
+        # 정렬: 1) 가격 오름차순, 2) 연장된 매물 우선 (extended_at 있으면 0, 없으면 1)
+        all_items.sort(key=lambda x: (
+            x.get('lprice', 0),
+            0 if x.get('extended_at') else 1
+        ))
 
         logger.info(
             f"검색 완료: 네이버({len(naver_items)}) + "
@@ -100,6 +104,7 @@ class SearchAggregatorService:
 
         return {
             'query': query,
+            'search_query': search_query,  # 정규화된 검색어 (외부 링크용)
             'total_count': len(all_items),
             'reference': reference_info,
             'items': all_items,
@@ -140,18 +145,30 @@ class SearchAggregatorService:
         query_tokens = tokenize_query(query)
         expanded_queries = expand_query_with_aliases(query)
 
+        # 브랜드 정규화 (펜더 → fender)
+        normalized_query = normalize_brand(query)
+        brand = extract_brand(query)
+
         # 후보 필터 구성
         candidate_filter = models.Q()
 
+        # 원본 토큰으로 검색
         for token in query_tokens:
             candidate_filter |= models.Q(name__icontains=token)
             candidate_filter |= models.Q(brand__icontains=token)
 
+        # 별칭 확장으로 검색 (스트랫 → Stratocaster)
         for expanded in expanded_queries:
             candidate_filter |= models.Q(name__icontains=expanded)
+            candidate_filter |= models.Q(brand__icontains=expanded)
             for token in expanded.split():
                 if len(token) > 1:
                     candidate_filter |= models.Q(name__icontains=token)
+
+        # 브랜드로 직접 검색 (펜더 → fender 변환됨)
+        if brand:
+            candidate_filter |= models.Q(brand__iexact=brand)
+            candidate_filter |= models.Q(brand__icontains=brand)
 
         query_lower = query.lower().strip()
         candidate_filter |= models.Q(name__icontains=query_lower)
@@ -203,20 +220,44 @@ class SearchAggregatorService:
         search_query = original_query
         detected_category = category  # 검색어 기반 카테고리 보존
 
+        # 사용자가 입력한 브랜드 추출 (있으면 존중)
+        user_brand = extract_brand(original_query)
+
         if best_match and best_match[1] >= 0.5:
-            # 50% 이상 매칭: 악기 정보로 쿼리 치환
             instrument = best_match[0]
-            search_query = f"{instrument.brand} {instrument.name}"
-            brand = instrument.brand.lower() if instrument.brand else brand
+
+            # 사용자가 입력한 브랜드와 DB 브랜드가 다르면 → 사용자 브랜드 존중
+            # 예: "squier stratocaster" 검색 시 DB에 fender stratocaster만 있어도 squier 유지
+            if user_brand and user_brand.lower() != instrument.brand.lower():
+                # 모델명만 DB에서 가져오고, 브랜드는 사용자 입력 유지
+                search_query = f"{user_brand} {instrument.name}"
+                brand = user_brand.lower()
+                logger.info(f"[쿼리 변환] '{original_query}' -> '{search_query}' (사용자 브랜드 유지)")
+            else:
+                # 브랜드 일치 또는 브랜드 없음 → DB 정보 사용
+                search_query = f"{instrument.brand} {instrument.name}"
+                brand = instrument.brand.lower() if instrument.brand else brand
+                logger.info(f"[쿼리 변환] '{original_query}' -> '{search_query}'")
+
             # 검색어 기반 카테고리 우선 (페달 키워드 감지 시 DB 카테고리 무시)
             if detected_category != 'guitar':
                 category = detected_category
             elif instrument.category:
                 category = instrument.category
-            logger.info(f"[쿼리 변환] '{original_query}' -> '{search_query}' (카테고리: {category})")
         else:
-            # 한글 브랜드 -> 영문 치환 (utils 통합 함수 사용)
+            # 한글 브랜드 -> 영문 치환
             search_query = normalize_brand(original_query)
+
+            # 모델명 별칭도 확장 (스트랫 -> Stratocaster 등)
+            tokens = search_query.split()
+            expanded_tokens = []
+            for token in tokens:
+                expanded = expand_query_with_aliases(token)
+                # 별칭이 있으면 첫 번째 확장된 값 사용 (원본 제외)
+                alias = next((e for e in expanded if e.lower() != token.lower()), None)
+                expanded_tokens.append(alias if alias else token)
+            search_query = ' '.join(expanded_tokens)
+            logger.info(f"[쿼리 확장] '{original_query}' -> '{search_query}'")
 
         logger.info(f"검색 시작: '{search_query}' (브랜드: {brand}, 카테고리: {category})")
 
@@ -242,6 +283,7 @@ class SearchAggregatorService:
             # 매칭된 악기들의 UserItem 검색
             user_items_qs = UserItem.objects.filter(
                 is_active=True,
+                is_under_review=False,  # 검토 중 매물 제외
                 expired_at__gt=now,
                 instrument__in=matching_instruments,
             ).select_related('instrument')[:display * 2]  # 필터링 여유분
@@ -249,6 +291,7 @@ class SearchAggregatorService:
             # 매칭 악기 없으면 제목/브랜드 검색
             user_items_qs = UserItem.objects.filter(
                 is_active=True,
+                is_under_review=False,  # 검토 중 매물 제외
                 expired_at__gt=now,
             ).filter(
                 models.Q(instrument__name__icontains=query) |
@@ -283,6 +326,8 @@ class SearchAggregatorService:
                 'instrument_name': item.instrument.name,
                 'instrument_brand': item.instrument.brand,
                 'score': calculate_match_score(query, title, item.instrument.image_url),
+                'extended_at': item.extended_at.isoformat() if item.extended_at else None,
+                'report_count': item.report_count,
             })
 
             # 신품 기준가 정보 (첫 번째 매물 기준)

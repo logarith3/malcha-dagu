@@ -19,6 +19,9 @@ urlpatterns = [
     # Search API
     path('search/', views.SearchView.as_view(), name='search'),
 
+    # Popular Searches API
+    path('popular-searches/', views.PopularSearchView.as_view(), name='popular-searches'),
+
     # AI Description API (임시 비활성화)
     # path('ai/describe/', views.AIDescriptionView.as_view(), name='ai-describe'),
 

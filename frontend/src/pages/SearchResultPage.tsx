@@ -15,9 +15,9 @@ import { AxiosError } from 'axios';
 import SearchBar from '../components/SearchBar';
 import MatchaBounceLoader from '../components/MatchaBounceLoader';
 import ItemCard from '../components/ItemCard';
-import { useSearch, useTrackItemClick, useCreateUserItem } from '../hooks/useSearch';
+import { useSearch, useTrackItemClick, useCreateUserItem, useExtendUserItem, useReportItem, useUpdateItemPrice } from '../hooks/useSearch';
 import { useAuth } from '../hooks/useAuth';
-import type { NaverItem, MergedUserItem } from '../types';
+import type { NaverItem, MergedUserItem, ReportReason } from '../types';
 
 // API 에러 응답 타입
 interface ApiErrorResponse {
@@ -50,7 +50,7 @@ function detectSource(url: string): string {
     return 'other';
 }
 
-const MIN_LOADING_TIME = 1500;
+const MIN_LOADING_TIME = 3400;
 
 export default function SearchResultPage() {
     const [searchParams] = useSearchParams();
@@ -72,6 +72,15 @@ export default function SearchResultPage() {
     // 클릭 추적
     const trackClick = useTrackItemClick();
 
+    // 연장 기능
+    const extendItem = useExtendUserItem();
+
+    // 신고 기능
+    const reportItem = useReportItem();
+
+    // 가격 업데이트 기능
+    const updatePrice = useUpdateItemPrice();
+
     // 최소 로딩 시간 보장
     useEffect(() => {
         if (!query) return;
@@ -87,6 +96,9 @@ export default function SearchResultPage() {
         }
     }, [isLoading, minTimeElapsed]);
 
+    // 정규화된 검색어는 외부 링크용으로만 사용 (URL 업데이트 시 재검색 발생하므로 제거)
+    const externalSearchQuery = data?.search_query || query;
+
     const handleSearch = (newQuery: string) => {
         navigate(`/search?q=${encodeURIComponent(newQuery)}`);
     };
@@ -95,6 +107,113 @@ export default function SearchResultPage() {
         if ('id' in item && item.source !== 'naver') {
             trackClick.mutate(item.id);
         }
+    };
+
+    const handleExtendItem = (itemId: string) => {
+        extendItem.mutate(itemId, {
+            onSuccess: () => {
+                alert('매물이 72시간 연장되었습니다!');
+            },
+            onError: (err: unknown) => {
+                const axiosErr = err as AxiosError<{ error?: string }>;
+                const statusCode = axiosErr.response?.status;
+                const serverMsg = axiosErr.response?.data?.error;
+
+                if (statusCode === 401) {
+                    alert('로그인이 필요합니다.\n연장은 로그인 후 이용해주세요.');
+                } else if (statusCode === 403) {
+                    alert('본인 매물만 연장할 수 있습니다.');
+                } else if (statusCode === 404) {
+                    alert('매물을 찾을 수 없습니다.\n이미 삭제되었거나 존재하지 않는 매물입니다.');
+                } else if (statusCode === 500) {
+                    alert('서버 오류가 발생했습니다.\n잠시 후 다시 시도해주세요.');
+                } else if (!axiosErr.response) {
+                    alert('네트워크 오류가 발생했습니다.\n인터넷 연결을 확인해주세요.');
+                } else {
+                    alert(serverMsg || '연장 처리 중 오류가 발생했습니다.');
+                }
+            },
+        });
+    };
+
+    const handleReportItem = (itemId: string, reason: ReportReason) => {
+        reportItem.mutate({ id: itemId, reason }, {
+            onSuccess: (data) => {
+                if (data.is_deleted) {
+                    alert('신고가 접수되었습니다.\n가격 오류 신고가 누적되어 해당 매물이 삭제되었습니다.');
+                } else if (data.is_under_review) {
+                    alert('신고가 접수되었습니다.\n해당 매물은 검토 대기 중으로 전환되었습니다.');
+                } else {
+                    alert('신고가 접수되었습니다.\n감사합니다!');
+                }
+            },
+            onError: (err: unknown) => {
+                const axiosErr = err as AxiosError<{ error?: string }>;
+                const statusCode = axiosErr.response?.status;
+                const serverMsg = axiosErr.response?.data?.error;
+
+                // 상태 코드별 상세 메시지
+                if (statusCode === 400) {
+                    if (serverMsg?.includes('이미 신고')) {
+                        alert('이미 신고한 매물입니다.\n같은 매물은 한 번만 신고할 수 있습니다.');
+                    } else if (serverMsg?.includes('본인 매물')) {
+                        alert('본인 매물은 신고할 수 없습니다.');
+                    } else {
+                        alert(serverMsg || '잘못된 요청입니다.');
+                    }
+                } else if (statusCode === 404) {
+                    alert('매물을 찾을 수 없습니다.\n이미 삭제되었거나 존재하지 않는 매물입니다.');
+                } else if (statusCode === 500) {
+                    alert('서버 오류가 발생했습니다.\n잠시 후 다시 시도해주세요.');
+                } else if (!axiosErr.response) {
+                    alert('네트워크 오류가 발생했습니다.\n인터넷 연결을 확인해주세요.');
+                } else {
+                    alert(serverMsg || '신고 처리 중 오류가 발생했습니다.');
+                }
+            },
+        });
+    };
+
+    const handleUpdatePrice = (itemId: string, newPrice: number) => {
+        updatePrice.mutate({ id: itemId, price: newPrice }, {
+            onSuccess: () => {
+                alert('가격이 업데이트되었습니다.\n감사합니다!');
+            },
+            onError: (err: unknown) => {
+                const axiosErr = err as AxiosError<{ error?: string }>;
+                const statusCode = axiosErr.response?.status;
+                const serverMsg = axiosErr.response?.data?.error;
+
+                // 상태 코드별 상세 메시지
+                if (statusCode === 400) {
+                    if (serverMsg?.includes('유효한 가격')) {
+                        alert('유효한 가격을 입력해주세요.\n0보다 큰 숫자를 입력해야 합니다.');
+                    } else if (serverMsg?.includes('너무 높')) {
+                        alert('가격이 너무 높습니다.\n1억원 이하로 입력해주세요.');
+                    } else {
+                        alert(serverMsg || '잘못된 요청입니다.');
+                    }
+                } else if (statusCode === 401) {
+                    alert('로그인이 필요합니다.\n가격 업데이트는 로그인 후 이용해주세요.');
+                } else if (statusCode === 404) {
+                    alert('매물을 찾을 수 없습니다.\n이미 삭제되었거나 존재하지 않는 매물입니다.');
+                } else if (statusCode === 500) {
+                    alert('서버 오류가 발생했습니다.\n잠시 후 다시 시도해주세요.');
+                } else if (!axiosErr.response) {
+                    alert('네트워크 오류가 발생했습니다.\n인터넷 연결을 확인해주세요.');
+                } else {
+                    alert(serverMsg || '가격 업데이트 중 오류가 발생했습니다.');
+                }
+            },
+        });
+    };
+
+    // 소유자 여부 확인 (is_owner 필드가 있으면 사용, 없으면 false)
+    const isItemOwner = (item: NaverItem | MergedUserItem): boolean => {
+        if (!isLoggedIn) return false;
+        // UserItemSerializer에서 is_owner 필드 제공 시 사용
+        if ('is_owner' in item) return (item as { is_owner: boolean }).is_owner;
+        return false;
     };
 
     if (!query) {
@@ -116,7 +235,7 @@ export default function SearchResultPage() {
                 >
                     {/* 헤더 */}
                     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-stone-200 shadow-sm">
-                        <div className="max-w-4xl mx-auto px-4 py-4">
+                        <div className="max-w-7xl mx-auto px-4 py-4">
                             <div className="flex items-center gap-4">
                                 <motion.button
                                     onClick={() => navigate('/')}
@@ -126,7 +245,7 @@ export default function SearchResultPage() {
                                 >
                                     DAGU
                                 </motion.button>
-                                <div className="flex-1">
+                                <div className="flex-1 max-w-2xl">
                                     <SearchBar
                                         onSearch={handleSearch}
                                         isLoading={isLoading}
@@ -138,76 +257,100 @@ export default function SearchResultPage() {
                         </div>
                     </header>
 
-                    {/* 메인 */}
-                    <main className="max-w-4xl mx-auto px-4 py-8">
-                        {/* 헤더 */}
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <h1 className="text-2xl font-bold text-stone-800">
+                    {/* 메인 Container (Grid Layout) */}
+                    <main className="max-w-7xl mx-auto px-4 py-8 grid lg:grid-cols-[1fr_280px] gap-8 items-start">
+
+                        {/* Left Column: Results */}
+                        <div className="min-w-0">
+                            {/* Title & Count */}
+                            <div className="mb-6">
+                                <h1 className="text-3xl font-bold text-stone-800 tracking-tight">
                                     "<span className="text-matcha-600">{query}</span>" 검색 결과
                                 </h1>
                                 {data && (
-                                    <p className="text-stone-500 mt-1">
-                                        {data.total_count}개 매물
+                                    <p className="text-stone-500 mt-2 font-medium">
+                                        총 {data.total_count}개의 매물을 찾았습니다
                                     </p>
                                 )}
                             </div>
+
+                            {/* Mobile External Search Buttons (Visible only on < lg) */}
+                            <div className="lg:hidden mb-8">
+                                <ExternalSearchButtons query={externalSearchQuery} vertical={false} />
+                            </div>
+
+                            {/* 에러 */}
+                            {isError && (
+                                <div className="text-center py-12 bg-red-50 rounded-2xl border border-red-100 mb-8">
+                                    <p className="text-4xl mb-4">😵</p>
+                                    <p className="text-red-700 font-medium">검색 중 오류가 발생했습니다</p>
+                                    <p className="text-red-500 text-sm mt-2">
+                                        {error instanceof Error ? error.message : '잠시 후 다시 시도해주세요'}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* 결과 없음 */}
+                            {data && data.total_count === 0 && (
+                                <div className="text-center py-16 bg-stone-50 rounded-2xl border border-dashed border-stone-300 mb-8">
+                                    <p className="text-4xl mb-4 opacity-50">🎸</p>
+                                    <p className="text-stone-600 font-medium">검색 결과가 없습니다</p>
+                                    <p className="text-stone-400 text-sm mt-2">다른 검색어로 시도해보세요</p>
+                                </div>
+                            )}
+
+                            {/* 결과 리스트 */}
+                            {allItems.length > 0 && (
+                                <motion.div
+                                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+                                    variants={{
+                                        hidden: { opacity: 0 },
+                                        show: {
+                                            opacity: 1,
+                                            transition: {
+                                                staggerChildren: 0.1
+                                            }
+                                        }
+                                    }}
+                                    initial="hidden"
+                                    animate="show"
+                                >
+                                    {allItems.map((item, index) => (
+                                        <motion.div
+                                            key={`item-${index}-${'id' in item ? item.id : item.productId}`}
+                                            variants={{
+                                                hidden: { opacity: 0, y: 20 },
+                                                show: { opacity: 1, y: 0 }
+                                            }}
+                                        >
+                                            <ItemCard
+                                                item={item}
+                                                rank={index + 1}
+                                                referencePrice={data?.reference?.price}
+                                                onClick={() => handleItemClick(item)}
+                                                isOwner={isItemOwner(item)}
+                                                isLoggedIn={isLoggedIn}
+                                                onExtend={'id' in item ? () => handleExtendItem(item.id) : undefined}
+                                                onReport={'id' in item && item.source !== 'naver' ? (reason) => handleReportItem(item.id, reason) : undefined}
+                                                onUpdatePrice={'id' in item && item.source !== 'naver' ? (price) => handleUpdatePrice(item.id, price) : undefined}
+                                            />
+                                        </motion.div>
+                                    ))}
+                                </motion.div>
+                            )}
                         </div>
 
-                        {/* 에러 */}
-                        {isError && (
-                            <div className="text-center py-12 bg-red-50 rounded-2xl border border-red-100">
-                                <p className="text-4xl mb-4">😵</p>
-                                <p className="text-red-700 font-medium">검색 중 오류가 발생했습니다</p>
-                                <p className="text-red-500 text-sm mt-2">
-                                    {error instanceof Error ? error.message : '잠시 후 다시 시도해주세요'}
-                                </p>
+                        {/* Right Column: Sticky Sidebar (Visible only on >= lg) */}
+                        <aside className="hidden lg:block h-full">
+                            <div className="sticky top-24 space-y-4">
+                                <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                                    <h3 className="text-sm font-bold text-stone-500 mb-3 uppercase tracking-wider">다른 사이트에서 찾기</h3>
+                                    <ExternalSearchButtons query={externalSearchQuery} vertical={true} />
+                                </div>
+                                {/* 추후 다른 사이드바 컨텐츠 추가 가능 (예: 광고, 추천 검색어 등) */}
                             </div>
-                        )}
+                        </aside>
 
-                        {/* 결과 없음 */}
-                        {data && data.total_count === 0 && (
-                            <div className="text-center py-16 bg-stone-50 rounded-2xl border border-dashed border-stone-300">
-                                <p className="text-4xl mb-4 opacity-50">🎸</p>
-                                <p className="text-stone-600 font-medium">검색 결과가 없습니다</p>
-                                <p className="text-stone-400 text-sm mt-2">다른 검색어로 시도해보세요</p>
-                            </div>
-                        )}
-
-                        {/* 결과 리스트 */}
-                        {allItems.length > 0 && (
-                            <motion.div
-                                className="space-y-4"
-                                variants={{
-                                    hidden: { opacity: 0 },
-                                    show: {
-                                        opacity: 1,
-                                        transition: {
-                                            staggerChildren: 0.1
-                                        }
-                                    }
-                                }}
-                                initial="hidden"
-                                animate="show"
-                            >
-                                {allItems.map((item, index) => (
-                                    <motion.div
-                                        key={`item-${index}-${'id' in item ? item.id : item.productId}`}
-                                        variants={{
-                                            hidden: { opacity: 0, y: 20 },
-                                            show: { opacity: 1, y: 0 }
-                                        }}
-                                    >
-                                        <ItemCard
-                                            item={item}
-                                            rank={index + 1}
-                                            referencePrice={data?.reference?.price}
-                                            onClick={() => handleItemClick(item)}
-                                        />
-                                    </motion.div>
-                                ))}
-                            </motion.div>
-                        )}
                     </main>
 
                     {/* FAB (매물 등록) - 로그인 시에만 표시 */}
@@ -216,16 +359,21 @@ export default function SearchResultPage() {
                             onClick={() => setShowRegisterModal(true)}
                             className="
                                 fixed bottom-8 right-8 z-50
-                                w-14 h-14 rounded-full bg-stone-800 text-white shadow-xl
-                                flex items-center justify-center text-2xl font-light
-                                hover:bg-stone-900 border border-stone-700
+                                w-14 h-14 rounded-full
+                                bg-matcha-500 text-white
+                                shadow-[0_4px_0_0_#16a34a]
+                                flex items-center justify-center
+                                hover:bg-matcha-600 active:shadow-[0_2px_0_0_#16a34a] active:translate-y-[2px]
+                                transition-all duration-150
                             "
                             initial={{ scale: 0, rotate: 90 }}
                             animate={{ scale: 1, rotate: 0 }}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                         >
-                            +
+                            <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
                         </motion.button>
                     )}
                 </motion.div>
@@ -240,9 +388,67 @@ export default function SearchResultPage() {
                     />
                 )}
             </AnimatePresence>
+
+            {/* 푸터 */}
+            <footer className="mt-12 py-6 text-center text-xs text-stone-400 border-t border-stone-100">
+                <p>* 네이버쇼핑 가격 정보는 실시간 조회 결과이며, 실제 판매가와 다를 수 있습니다.</p>
+            </footer>
         </div>
     );
 }
+
+// 외부 검색 버튼 컴포넌트
+const ExternalSearchButtons = ({ query, vertical }: { query: string, vertical: boolean }) => (
+    <div className={`flex ${vertical ? 'flex-col gap-3' : 'flex-wrap gap-2'}`}>
+        {/* Mule */}
+        <a
+            href={`https://www.mule.co.kr/bbs/market/sell?qf=title&qs=${encodeURIComponent(query.slice(0, 20))}&sb=wdate&sd=desc`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`
+                flex items-center ${vertical ? 'justify-between px-5 py-4' : 'justify-center gap-2 px-6 py-3'} 
+                rounded-xl bg-blue-100 text-blue-700
+                hover:bg-blue-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-200/50
+                transition-all duration-200 group
+            `}
+        >
+            <span className={`font-bold ${vertical ? 'text-base' : ''}`}>Mule</span>
+            <svg className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:opacity-100 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+        </a>
+
+        {/* Reverb */}
+        <a
+            href={`https://reverb.com/marketplace?query=${encodeURIComponent(query)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`
+                flex items-center ${vertical ? 'justify-between px-5 py-4' : 'justify-center gap-2 px-6 py-3'} 
+                rounded-xl bg-yellow-100 text-yellow-700
+                hover:bg-yellow-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-yellow-200/50
+                transition-all duration-200 group
+            `}
+        >
+            <span className={`font-bold ${vertical ? 'text-base' : ''}`}>Reverb</span>
+            <svg className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:opacity-100 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+        </a>
+
+        {/* Digimart */}
+        <a
+            href={`https://www.digimart.net/search?keywordAnd=${query.replace(/ /g, '+')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`
+                flex items-center ${vertical ? 'justify-between px-5 py-4' : 'justify-center gap-2 px-6 py-3'} 
+                rounded-xl bg-red-100 text-red-700
+                hover:bg-red-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-red-200/50
+                transition-all duration-200 group
+            `}
+        >
+            <span className={`font-bold ${vertical ? 'text-base' : ''}`}>Digimart</span>
+            <svg className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:opacity-100 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+        </a>
+    </div>
+);
 
 // 매물 등록 모달
 function RegisterModal({ query, onClose }: { query: string; onClose: () => void }) {
@@ -278,29 +484,42 @@ function RegisterModal({ query, onClose }: { query: string; onClose: () => void 
             source: finalSource
         }, {
             onSuccess: () => {
-                // 검색 결과 캐시 즉시 만료 및 갱신 요청
-                queryClient.invalidateQueries({ queryKey: ['search'] });
+                // 검색 결과 즉시 다시 가져오기
+                queryClient.refetchQueries({ queryKey: ['search'] });
 
                 const sourceName = SOURCE_LABELS[finalSource] || '등록된 매물';
                 alert(`${sourceName} 매물이 성공적으로 등록되었습니다! 🎸`);
                 onClose();
             },
-            onError: (error: AxiosError<ApiErrorResponse>) => {
+            onError: (err: Error) => {
+                const error = err as AxiosError<ApiErrorResponse>;
                 console.error('Failed to register item:', error);
 
                 let errorMsg = '등록에 실패했습니다.';
-                if (error.response?.data) {
-                    const data = error.response.data;
-                    if (typeof data === 'object' && data !== null) {
-                        const messages = Object.entries(data)
-                            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(' ') : String(value)}`)
-                            .join('\n');
-                        errorMsg = `입력값을 확인해주세요:\n${messages}`;
-                    } else {
-                        errorMsg = `오류: ${JSON.stringify(data)}`;
+                try {
+                    const data = error.response?.data;
+                    if (data) {
+                        // JSON 문자열로 변환 후 파싱
+                        const jsonStr = JSON.stringify(data);
+                        if (jsonStr.includes('이미 등록된')) {
+                            errorMsg = '이미 등록된 매물입니다.';
+                        } else if (jsonStr.includes('허용되지 않은')) {
+                            errorMsg = '허용되지 않은 사이트입니다.\n(뮬, 번개장터, 당근마켓, 중고나라만 등록 가능)';
+                        } else {
+                            // 모든 에러 메시지 추출
+                            const messages: string[] = [];
+                            Object.values(data).forEach(value => {
+                                if (Array.isArray(value)) {
+                                    messages.push(...value.map(v => String(v)));
+                                } else if (typeof value === 'string') {
+                                    messages.push(value);
+                                }
+                            });
+                            errorMsg = messages.join('\n') || '입력값을 확인해주세요.';
+                        }
                     }
-                } else if (error.message) {
-                    errorMsg = `네트워크 오류: ${error.message}`;
+                } catch {
+                    errorMsg = error.message || '등록에 실패했습니다.';
                 }
                 alert(errorMsg);
             }

@@ -10,6 +10,8 @@ from typing import Optional
 
 from .config import FilterConfig, CategoryConfig, CrawlerConfig
 
+logger = logging.getLogger(__name__)
+
 # =============================================================================
 # 사용자 매물 필터링
 # =============================================================================
@@ -22,32 +24,20 @@ def filter_user_item(
 ) -> bool:
     """
     사용자 매물 필터링.
-    네이버 아이템과 동일한 기준 적용.
+    유저가 직접 등록한 매물이므로 가격 필터는 적용하지 않음.
 
     Returns:
         True = 통과, False = 탈락
     """
-    # [필터 1] 최소 가격 (카테고리별 차등 적용)
-    if min_price is None:
-        if category == 'effect':
-            min_price = CrawlerConfig.MIN_PRICE_PEDAL
-        else:
-            min_price = CrawlerConfig.MIN_PRICE_KRW
-
-    if not check_min_price(price, min_price):
-        return False
-
-    # [필터 2] 블랙리스트
+    # [필터 1] 블랙리스트
     if not check_blacklist(title):
         return False
 
-    # [필터 3] 카테고리 불일치 (카테고리가 주어진 경우)
+    # [필터 2] 카테고리 불일치 (카테고리가 주어진 경우)
     if category and not check_category_mismatch(category, title):
         return False
 
     return True
-
-logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -146,32 +136,17 @@ def _is_korean(text: str) -> bool:
     return any('\uac00' <= char <= '\ud7a3' for char in text)
 
 
-@lru_cache(maxsize=1)
-def get_blacklist_exceptions() -> tuple[str, ...]:
-    """블랙리스트 예외 키워드 로드 (캐싱)"""
-    raw_list = getattr(FilterConfig, 'BLACKLIST_EXCEPTION_KEYWORDS', [])
-    return tuple(word.lower() for word in raw_list if word)
-
-
 def check_blacklist(title: str) -> bool:
     """
     블랙리스트 검사.
-    - 예외 키워드(세트, 포함 등)가 있으면 블랙리스트 무시
-    - 영어 키워드: 단어 경계 검사 (word boundary)
-    - 한글 키워드: 부분문자열 매칭
+    - 블랙리스트 키워드가 있으면 필터링
+    - "세트", "포함" 등 예외 키워드는 더 이상 사용하지 않음
 
     Returns:
         True = 통과 (블랙리스트에 없음)
         False = 탈락 (블랙리스트에 있음)
     """
     title_lower = title.lower()
-
-    # 예외 키워드 확인 ("세트", "동시 구매" 등이 있으면 블랙리스트 무시)
-    exceptions = get_blacklist_exceptions()
-    if any(exc in title_lower for exc in exceptions):
-        logger.debug(f"[Blacklist] 예외 통과 (세트/포함): {title[:50]}")
-        return True
-
     current_blacklist = get_blacklist()
 
     for blackword in current_blacklist:
@@ -181,7 +156,7 @@ def check_blacklist(title: str) -> bool:
                 logger.debug(f"[Blacklist] 탈락: '{blackword}' - {title[:50]}")
                 return False
         else:
-            # 영어: 단어 경계 검사 (앞뒤로 알파벳이 아닌 문자)
+            # 영어: 단어 경계 검사
             pattern = rf'(?<![a-zA-Z]){re.escape(blackword)}(?![a-zA-Z])'
             if re.search(pattern, title_lower):
                 logger.debug(f"[Blacklist] 탈락: '{blackword}' - {title[:50]}")
@@ -203,7 +178,6 @@ def check_min_price(price: int, min_price: int = None) -> bool:
         min_price = CrawlerConfig.MIN_PRICE_KRW
     
     if price < min_price:
-        logger.debug(f"[PriceFilter] 탈락: {price:,}원 < {min_price:,}원")
         return False
     
     return True
@@ -286,6 +260,12 @@ def validate_tokens(model_name: str, title: str) -> bool:
     return False
 
 
+def _contains_keywords(title_lower: str, config_key: str) -> bool:
+    """config에서 키워드 목록을 가져와 제목에 포함되어 있는지 확인"""
+    keywords = getattr(FilterConfig, config_key, [])
+    return any(kw.lower() in title_lower for kw in keywords)
+
+
 def check_category_mismatch(search_category: str, title: str) -> bool:
     """
     카테고리 불일치 검사.
@@ -301,51 +281,35 @@ def check_category_mismatch(search_category: str, title: str) -> bool:
 
     # guitar/bass 검색 시
     if search_cat in ['guitar', 'bass']:
-        # 페달 제외
-        pedal_keywords = getattr(FilterConfig, 'CATEGORY_PEDAL_KEYWORDS', [])
-        if any(kw.lower() in title_lower for kw in pedal_keywords):
+        if _contains_keywords(title_lower, 'CATEGORY_PEDAL_KEYWORDS'):
             logger.debug(f"⛔ 카테고리 탈락: 페달 키워드 in '{title[:50]}...'")
             return False
-
-        # 앰프 제외
-        amp_keywords = getattr(FilterConfig, 'CATEGORY_AMP_KEYWORDS', [])
-        if any(kw.lower() in title_lower for kw in amp_keywords):
+        if _contains_keywords(title_lower, 'CATEGORY_AMP_KEYWORDS'):
             logger.debug(f"⛔ 카테고리 탈락: 앰프 키워드 in '{title[:50]}...'")
             return False
-
-        # 어쿠스틱 제외 (일렉 위주)
-        acoustic_keywords = getattr(FilterConfig, 'CATEGORY_ACOUSTIC_KEYWORDS', [])
-        if any(kw.lower() in title_lower for kw in acoustic_keywords):
+        if _contains_keywords(title_lower, 'CATEGORY_ACOUSTIC_KEYWORDS'):
             logger.debug(f"⛔ 카테고리 탈락: 어쿠스틱 키워드 in '{title[:50]}...'")
             return False
 
     # acoustic 검색 시
     if search_cat == 'acoustic':
-        # 페달/앰프만 제외
-        pedal_keywords = getattr(FilterConfig, 'CATEGORY_PEDAL_KEYWORDS', [])
-        amp_keywords = getattr(FilterConfig, 'CATEGORY_AMP_KEYWORDS', [])
-
-        if any(kw.lower() in title_lower for kw in pedal_keywords):
+        if _contains_keywords(title_lower, 'CATEGORY_PEDAL_KEYWORDS'):
             return False
-        if any(kw.lower() in title_lower for kw in amp_keywords):
+        if _contains_keywords(title_lower, 'CATEGORY_AMP_KEYWORDS'):
             return False
 
     # effect(이펙터) 검색 시
     if search_cat == 'effect':
         # "페달", "이펙터" 등이 제목에 있으면 확실히 이펙터이므로 통과
-        effect_confirm_keywords = ['pedal', 'effect', 'stomp', '페달', '이펙터', '이펙트']
-        if any(kw in title_lower for kw in effect_confirm_keywords):
-            return True  # 확실한 이펙터 → 통과
-
+        if _contains_keywords(title_lower, 'EFFECT_CONFIRM_KEYWORDS'):
+            return True
         # 그 외에는 기타 본체 키워드 확인
-        instrument_keywords = getattr(FilterConfig, 'CATEGORY_INSTRUMENT_KEYWORDS', [])
-        if any(kw.lower() in title_lower for kw in instrument_keywords):
+        if _contains_keywords(title_lower, 'CATEGORY_INSTRUMENT_KEYWORDS'):
             return False
 
     # amp 검색 시
     if search_cat == 'amp':
-        pedal_keywords = getattr(FilterConfig, 'CATEGORY_PEDAL_KEYWORDS', [])
-        if any(kw.lower() in title_lower for kw in pedal_keywords):
+        if _contains_keywords(title_lower, 'CATEGORY_PEDAL_KEYWORDS'):
             return False
 
     return True
@@ -493,7 +457,6 @@ def filter_naver_item_with_reason(
             min_price = CrawlerConfig.MIN_PRICE_KRW
 
     if not check_min_price(lprice, min_price):
-        logger.info(f"[Filter] ❌ 가격미달 {lprice:,}원 < {min_price:,}원 - {title[:60]}")
         return None, 'price'
 
     # [필터 2] 블랙리스트

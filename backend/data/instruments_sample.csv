@@ -1,0 +1,290 @@
+brand,name,category,reference_price,image_url,description
+fender,american professional ii stratocaster,guitar,2400000,,펜더 아메리칸 프로페셔널 II 스트라토캐스터
+fender,american professional ii telecaster,guitar,2400000,,펜더 아메리칸 프로페셔널 II 텔레캐스터
+fender,american ultra stratocaster,guitar,3200000,,펜더 아메리칸 울트라 스트라토캐스터
+fender,american vintage ii 1961 stratocaster,guitar,3300000,,펜더 아메리칸 빈티지 II 1961 스트라토캐스터
+fender,player stratocaster,guitar,1100000,,펜더 플레이어 스트라토캐스터
+fender,player telecaster,guitar,1100000,,펜더 플레이어 텔레캐스터
+fender,vintera ii 60s stratocaster,guitar,1600000,,펜더 빈테라 II 60s 스트라토캐스터
+fender,american performer stratocaster,guitar,1800000,,펜더 아메리칸 퍼포머 스트라토캐스터
+fender,custom shop 1960 stratocaster relic,guitar,6500000,,펜더 커스텀샵 1960 스트라토캐스터 렐릭
+gibson,les paul standard 50s,guitar,3600000,,깁슨 레스폴 스탠다드 50s
+gibson,les paul standard 60s,guitar,3600000,,깁슨 레스폴 스탠다드 60s
+gibson,les paul classic,guitar,2800000,,깁슨 레스폴 클래식
+gibson,les paul studio,guitar,2200000,,깁슨 레스폴 스튜디오
+gibson,sg standard 61,guitar,2600000,,깁슨 SG 스탠다드 61
+gibson,es-335 figured,guitar,5500000,,깁슨 ES-335 피겨드
+gibson,custom shop 1959 les paul standard,guitar,9000000,,깁슨 커스텀샵 1959 레스폴 스탠다드 (R9)
+prs,core custom 24,guitar,5500000,,PRS 코어 커스텀 24
+prs,ce 24,guitar,3200000,,PRS CE 24
+prs,s2 mccarty 594,guitar,2600000,,PRS S2 매카티 594
+prs,silver sky se,guitar,1100000,,PRS 실버스카이 SE
+prs,se custom 24,guitar,1150000,,PRS SE 커스텀 24
+prs,se standard 24,guitar,850000,,PRS SE 스탠다드 24
+ibanez,az2204,guitar,2600000,,아이바네즈 AZ2204 프레스티지
+ibanez,az2402,guitar,2600000,,아이바네즈 AZ2402 프레스티지
+ibanez,rg550,guitar,1400000,,아이바네즈 RG550 제네시스
+ibanez,jem7vp,guitar,2300000,,아이바네즈 JEM7VP 스티브바이
+ibanez,pia3761,guitar,4500000,,아이바네즈 PIA3761
+suhr,classic s antique,guitar,4800000,,써 클래식 S 앤티크
+suhr,modern plus,guitar,4500000,,써 모던 플러스
+tom anderson,drop top classic,guitar,5500000,,탐앤더슨 드롭탑 클래식
+james tyler,studio elite hd,guitar,6500000,,제임스타일러 스튜디오 엘리트 HD
+musicman,majesty,guitar,4800000,,뮤직맨 마제스티 (존 페트루치)
+epiphone,les paul custom,guitar,950000,,에피폰 레스폴 커스텀
+epiphone,casino,guitar,850000,,에피폰 카지노
+squier,classic vibe 50s stratocaster,guitar,650000,,스콰이어 클래식바이브 50s 스트라토캐스터
+squier,classic vibe 60s jazz bass,bass,700000,,스콰이어 클래식바이브 60s 재즈베이스
+squier,affinity stratocaster,guitar,400000,,스콰이어 어피니티 스트라토캐스터
+yamaha,pacifica 612vii,guitar,900000,,야마하 퍼시피카 612
+yamaha,pacifica professional,guitar,2500000,,야마하 퍼시피카 프로페셔널
+cort,g290 fat,guitar,600000,,콜트 G290 FAT
+cort,g300 pro,guitar,850000,,콜트 G300 Pro
+swing,s-100 plus,guitar,350000,,스윙 S-100 Plus
+swing,g1,guitar,250000,,스윙 G1
+gopherwood,g100,acoustic,200000,,고퍼우드 G100
+gopherwood,k330,acoustic,450000,,고퍼우드 K330
+crafter,kgae-27,acoustic,750000,,크래프터 KGAE-27 프레스티지
+crafter,godinus,acoustic,850000,,크래프터 갓인어스
+martin,d-28 standard,acoustic,4300000,,마틴 D-28 스탠다드
+martin,om-28 standard,acoustic,4300000,,마틴 OM-28 스탠다드
+martin,d-18 standard,acoustic,3800000,,마틴 D-18 스탠다드
+martin,000-15m,acoustic,2300000,,마틴 000-15M
+martin,lx1,acoustic,650000,,마틴 리틀마틴 LX1
+taylor,314ce v-class,acoustic,3200000,,테일러 314ce V-Class
+taylor,814ce v-class,acoustic,5500000,,테일러 814ce V-Class
+taylor,gs mini-e koa,acoustic,1300000,,테일러 GS Mini-e 코아
+taylor,114ce,acoustic,1400000,,테일러 114ce
+yamaha,ll16 are,acoustic,1100000,,야마하 LL16 ARE
+yamaha,fg830,acoustic,500000,,야마하 FG830
+fender,american professional ii jazz bass,bass,2500000,,펜더 아메리칸 프로페셔널 II 재즈베이스
+fender,american professional ii precision bass,bass,2500000,,펜더 아메리칸 프로페셔널 II 프레시전 베이스
+fender,player jazz bass,bass,1200000,,펜더 플레이어 재즈베이스
+sire,v7 vintage 2nd gen,bass,750000,,사이어 V7 빈티지 2세대
+sire,v5,bass,600000,,사이어 V5
+sire,p5,bass,600000,,사이어 P5
+musicman,stingray special,bass,3500000,,뮤직맨 스팅레이 스페셜 4현
+yamaha,trbx304,bass,450000,,야마하 TRBX304
+yamaha,bb434,bass,700000,,야마하 BB434
+boss,ds-1w,effect,200000,,BOSS DS-1w 와자 크래프트
+boss,sd-1w,effect,200000,,BOSS SD-1w 와자 크래프트
+boss,bd-2w,effect,220000,,BOSS BD-2w 와자 크래프트
+boss,ce-2w,effect,280000,,BOSS CE-2w 코러스 와자 크래프트
+boss,dm-2w,effect,240000,,BOSS DM-2w 딜레이
+boss,mt-2w,effect,220000,,BOSS MT-2w 메탈존
+boss,gt-1000,effect,1400000,,BOSS GT-1000 멀티이펙터
+boss,gt-1000core,effect,900000,,BOSS GT-1000CORE
+boss,gx-100,effect,800000,,BOSS GX-100
+boss,me-90,effect,500000,,BOSS ME-90
+strymon,bigsky,effect,680000,,스트라이몬 빅스카이
+strymon,timeline,effect,680000,,스트라이몬 타임라인
+strymon,mobius,effect,680000,,스트라이몬 모비우스
+strymon,cloudburst,effect,400000,,스트라이몬 클라우드버스트
+strymon,bluesky v2,effect,550000,,스트라이몬 블루스카이 V2
+strymon,el capistan v2,effect,550000,,스트라이몬 엘 카피스탄 V2
+strymon,deco v2,effect,550000,,스트라이몬 데코 V2
+strymon,iridium,effect,580000,,스트라이몬 이리듐
+universal audio,dream 65,effect,550000,,UAFX Dream 65 리버브 앰프
+universal audio,ruby 63,effect,550000,,UAFX Ruby 63 탑 부스트
+universal audio,lion 68,effect,550000,,UAFX Lion 68 슈퍼 리드
+chase bliss,mood mkii,effect,600000,,체이스 블리스 무드 MKII
+chase bliss,blooper,effect,700000,,체이스 블리스 블루퍼
+vemuram,jan ray,effect,580000,,베무람 잔레이
+vemuram,myriad fuzz,effect,600000,,베무람 미리아드 퍼즈
+klon,centaur,effect,5000000,,클론 센타우르 (빈티지/레어)
+analogman,king of tone,effect,1200000,,아날로그맨 킹오브톤 (대기 5년)
+analogman,prince of tone,effect,400000,,아날로그맨 프린스오브톤
+xotic,ep booster,effect,160000,,엑조틱 EP 부스터
+xotic,sp compressor,effect,180000,,엑조틱 SP 컴프레서
+xotic,bb preamp,effect,250000,,엑조틱 BB 프리앰프
+paul cochrane,timmy v3,effect,250000,,폴 코크란 팀미 V3
+fulltone,ocd v2,effect,220000,,풀톤 OCD V2
+electro-harmonix,big muff pi,effect,140000,,일렉트로 하모닉스 빅머프 Pi
+electro-harmonix,op-amp big muff,effect,150000,,EHX 오피앰프 빅머프 (스매싱펌킨스)
+electro-harmonix,pog2,effect,550000,,EHX POG2 옥타버
+tc electronic,polytune 3,effect,140000,,TC 일렉트로닉 폴리튠 3
+tc electronic,hall of fame 2,effect,200000,,TC 일렉트로닉 홀오브페임 2
+tc electronic,flashback 2,effect,220000,,TC 일렉트로닉 플래시백 2
+tc electronic,ditto looper,effect,150000,,TC 일렉트로닉 디토 루퍼
+line 6,helix floor,effect,2300000,,라인6 힐릭스 플로어
+line 6,helix lt,effect,1600000,,라인6 힐릭스 LT
+line 6,hx stomp,effect,950000,,라인6 HX 스톰프
+line 6,hx stomp xl,effect,1100000,,라인6 HX 스톰프 XL
+line 6,pod go,effect,700000,,라인6 POD Go
+neural dsp,quad cortex,effect,2600000,,뉴럴 DSP 쿼드 코텍스
+kemper,profiler stage,effect,2400000,,켐퍼 프로파일러 스테이지
+kemper,profiler head,effect,2600000,,켐퍼 프로파일러 헤드
+fractal,fm3,effect,1800000,,프랙탈 오디오 FM3
+fractal,fm9,effect,2800000,,프랙탈 오디오 FM9
+fractal,axe-fx iii,effect,4000000,,프랙탈 Axe-Fx III
+zoom,ms-50g,effect,130000,,줌 MS-50G 멀티스톰프
+zoom,g1four,effect,100000,,줌 G1 Four
+nux,mg-30,effect,350000,,눅스 MG-30
+nux,mighty plug pro,effect,150000,,눅스 마이티 플러그 프로
+valeton,gp-200,effect,400000,,발레톤 GP-200
+mooer,ge200,effect,300000,,무어 GE200
+marshall,dsl40cr,amp,1100000,,마샬 DSL40CR 콤보
+marshall,sv20h,amp,1600000,,마샬 스튜디오 빈티지 SV20H (플렉시)
+marshall,sc20h,amp,1600000,,마샬 스튜디오 클래식 SC20H (JCM800)
+marshall,mg15gfx,amp,200000,,마샬 MG15GFX
+fender,65 twin reverb,amp,2600000,,펜더 65 트윈 리버브 리이슈
+fender,65 deluxe reverb,amp,2200000,,펜더 65 디럭스 리버브 리이슈
+fender,blues junior iv,amp,1100000,,펜더 블루스 주니어 IV
+fender,mustang lt25,amp,250000,,펜더 머스탱 LT25
+vox,ac15c1,amp,1100000,,복스 AC15C1
+vox,ac30c2,amp,1600000,,복스 AC30C2
+vox,pathfinder 10,amp,100000,,복스 패스파인더 10
+orange,crush 20,amp,180000,,오렌지 크러쉬 20
+orange,terror stamp,amp,250000,,오렌지 테러 스탬프
+yamaha,thr10ii,amp,450000,,야마하 THR10II
+yamaha,thr30ii wireless,amp,750000,,야마하 THR30II Wireless
+positive grid,spark 40,amp,400000,,포지티브 그리드 스파크 40
+positive grid,spark mini,amp,330000,,포지티브 그리드 스파크 미니
+blackstar,fly 3,amp,100000,,블랙스타 FLY 3 미니 앰프
+roland,jc-120,amp,1600000,,롤랜드 JC-120 재즈 코러스
+boss,katana-50 mkii,amp,350000,,BOSS 카타나-50 MkII
+boss,katana-100 mkii,amp,550000,,BOSS 카타나-100 MkII
+mesa boogie,dual rectifier head,amp,3500000,,메사부기 듀얼 렉티파이어 헤드
+mesa boogie,mark v 35,amp,3000000,,메사부기 마크 5:35
+brand,name,category,reference_price,image_url,description
+walrus audio,julia v2,effect,280000,,월러스 오디오 줄리아 V2 코러스
+walrus audio,slö,effect,290000,,월러스 오디오 슬로 리버브
+walrus audio,arp-87,effect,280000,,월러스 오디오 ARP-87 딜레이
+walrus audio,acs1,effect,560000,,월러스 오디오 ACS1 앰프 시뮬레이터
+earthquaker devices,plumes,effect,160000,,EQD 플룸스 오버드라이브
+earthquaker devices,dispatch master v3,effect,290000,,EQD 디스패치 마스터 딜레이 리버브
+earthquaker devices,afterneath v3,effect,320000,,EQD 애프터니스 V3 리버브
+earthquaker devices,hizumitas,effect,240000,,EQD 히즈미타스 퍼즈
+jhs,morning glory v4,effect,290000,,JHS 모닝 글로리 V4
+jhs,bonsai,effect,350000,,JHS 본사이 (9가지 튜브스크리머)
+jhs,packrat,effect,350000,,JHS 팩랫 (9가지 RAT)
+jhs,muffuletta,effect,350000,,JHS 머풀레타 (6가지 빅머프)
+jhs,angry charlie v3,effect,290000,,JHS 앵그리 찰리 V3
+keeley,compressor plus,effect,220000,,킬리 컴프레서 플러스
+keeley,caverns v2,effect,280000,,킬리 카번스 딜레이 리버브
+keeley,halo,effect,450000,,킬리 헤일로 앤디 티몬스 딜레이
+source audio,collider,effect,520000,,소스 오디오 콜라이더 딜레이 리버브
+source audio,ventris,effect,620000,,소스 오디오 벤트리스 듀얼 리버브
+source audio,nemesis,effect,450000,,소스 오디오 네메시스 딜레이
+hologram electronics,microcosm,effect,800000,,홀로그램 마이크로코즘 (글리치/루퍼)
+meris,polymoon,effect,450000,,메리스 폴리문 딜레이
+meris,mercury7,effect,450000,,메리스 머큐리7 리버브
+empress effects,zoia,effect,750000,,엠프레스 조이아 (모듈러 이펙터)
+empress effects,compressor mkii,effect,380000,,엠프레스 컴프레서 MkII
+boss,sy-1,effect,250000,,BOSS SY-1 신디사이저 페달
+boss,sy-200,effect,450000,,BOSS SY-200 신디사이저
+boss,rc-500,effect,480000,,BOSS RC-500 루프 스테이션
+boss,dm-101,effect,650000,,BOSS DM-101 아날로그 딜레이 머신
+boss,bp-1w,effect,250000,,BOSS BP-1w 부스터 프리앰프
+origin effects,cali76 compact deluxe,effect,480000,,오리진 이펙트 칼리76 컴프레서
+origin effects,revival drive compact,effect,550000,,오리진 이펙트 리바이벌 드라이브
+digitech,whammy 5,effect,350000,,디지텍 와미 5
+digitech,drop,effect,250000,,디지텍 드랍 (다운튜닝)
+mxr,phase 90,effect,120000,,MXR 페이즈 90
+mxr,carbon copy,effect,200000,,MXR 카본 카피 아날로그 딜레이
+mxr,dyna comp,effect,110000,,MXR 다이나 컴프
+mxr,m80 bass di,effect,220000,,MXR M80 베이스 DI+
+mxr,talk box,effect,250000,,MXR 토크박스
+tech 21,sansamp bass driver di v2,effect,320000,,테크21 산스앰프 베이스 드라이버 DI
+darkglass,alpha omega ultra,effect,580000,,다크글래스 알파 오메가 울트라
+darkglass,b7k ultra v2,effect,580000,,다크글래스 B7K 울트라 V2
+darkglass,adam,effect,750000,,다크글래스 아담 (오디오 인터페이스 내장)
+esp,e-ii horizon fr,guitar,2800000,,ESP E-II 호라이즌 FR
+esp,e-ii eclipse,guitar,2800000,,ESP E-II 이클립스
+ltd,ec-1000,guitar,1400000,,LTD EC-1000 디럭스
+ltd,mh-1000,guitar,1400000,,LTD MH-1000
+schecter,hellraiser c-1,guitar,1300000,,쉑터 헬레이저 C-1
+schecter,c-1 sls elite,guitar,1800000,,쉑터 C-1 SLS 엘리트
+schecter,nick johnston traditional,guitar,1100000,,쉑터 닉 존스턴 트래디셔널
+schecter,mv-6,guitar,1200000,,쉑터 MV-6
+strandberg,boden original 6,guitar,2800000,,스트랜드버그 보든 오리지널 6
+strandberg,boden metal 6,guitar,2900000,,스트랜드버그 보든 메탈 6
+strandberg,boden essential,guitar,1600000,,스트랜드버그 보든 에센셜
+mayones,duvell elite 6,guitar,4500000,,마요네즈 듀벨 엘리트 6
+mayones,regius 6,guitar,5500000,,마요네즈 레지우스 6
+aristides,060,guitar,5000000,,아리스티데스 060 (신소재 기타)
+solar guitars,a1.6,guitar,1500000,,솔라 기타 A1.6 (올라 잉글랜드)
+kiesel,delos,guitar,2500000,,키젤 델로스
+kiesel,zeus,guitar,2800000,,키젤 제우스 (헤드리스)
+musicman,axis,guitar,4200000,,뮤직맨 액시스 (에디 반 헤일런)
+musicman,luke iii,guitar,4500000,,뮤직맨 루크3 (스티브 루카서)
+sterling,majesty,guitar,1800000,,스털링 마제스티
+charvel,dk24 hss,guitar,1600000,,샤벨 프로모드 DK24 HSS
+charvel,guthrie govan signature,guitar,5000000,,샤벨 거스리 고반 시그니처
+jackson,soloist sl2,guitar,1800000,,잭슨 솔로이스트 SL2
+jackson,rhoads rr1,guitar,4500000,,잭슨 로즈 RR1 USA
+gretsch,g6120,guitar,4500000,,그레치 G6120 내쉬빌
+gretsch,white falcon,guitar,5500000,,그레치 화이트 팔콘
+gretsch,g5420t,guitar,1200000,,그레치 일렉트로매틱 G5420T
+rickenbacker,330,guitar,3500000,,리켄베커 330
+rickenbacker,4003,bass,3800000,,리켄베커 4003 베이스
+dingwall,ng3 5string,bass,3200000,,딩월 NG3 5현 (아담 놀리)
+dingwall,combustion 5,bass,2800000,,딩월 콤버스천 5현
+spector,euro 4 lx,bass,3500000,,스펙터 유로 4 LX
+spector,ns pulse ii,bass,1800000,,스펙터 NS 펄스 II
+warwick,thumb bo 4,bass,2800000,,워윅 썸 베이스 BO 4현 (독일)
+warwick,streamer lx,bass,3000000,,워윅 스트리머 LX
+warwick,rockbass corvette,bass,1200000,,워윅 락베이스 코르벳
+sandberg,california tm4,bass,2800000,,샌드버그 캘리포니아 TM4
+lakland,skyline 55-02,bass,2200000,,락랜드 스카이라인 55-02
+fender,flea jazz bass,bass,2000000,,펜더 플리 재즈베이스 (RHCP)
+fender,geddy lee jazz bass,bass,1800000,,펜더 게디 리 재즈베이스
+yamaha,bb p34,bass,2200000,,야마하 BB P34 (Made in Japan)
+ibanez,ehb1005,bass,1600000,,아이바네즈 EHB1005 헤드리스 베이스
+ibanez,sr5000,bass,2800000,,아이바네즈 SR5000 프레스티지
+gibson,j-45 standard,acoustic,3800000,,깁슨 J-45 스탠다드
+gibson,hummingbird standard,acoustic,5500000,,깁슨 허밍버드 스탠다드
+gibson,sj-200,acoustic,7000000,,깁슨 SJ-200 (점보바디)
+taylor,k24ce,acoustic,7500000,,테일러 K24ce 코아
+taylor,914ce,acoustic,7000000,,테일러 914ce
+martin,hd-28,acoustic,4500000,,마틴 HD-28
+martin,d-45,acoustic,13000000,,마틴 D-45 (끝판왕)
+lowden,f-35,acoustic,8500000,,로우든 F-35 (핑거스타일)
+lowden,o-25,acoustic,6500000,,로우든 O-25
+lakewood,m-32 cp,acoustic,5500000,,레이크우드 M-32 CP (정성하)
+maton,ebg808te,acoustic,3800000,,메이튼 EBG808TE (토미 엠마뉴엘)
+cole clark,angel 2,acoustic,2800000,,콜클락 엔젤 2
+yamaha,ls16 are,acoustic,1100000,,야마하 LS16 ARE
+yamaha,apx600,acoustic,450000,,야마하 APX600
+cort,gold-a6,acoustic,750000,,콜트 골드 A6
+cort,earth 100,acoustic,350000,,콜트 어스 100
+sigma,dr-28,acoustic,650000,,시그마 DR-28 (마틴 카피)
+marshall,jvm410h,amp,2800000,,마샬 JVM410H 헤드
+marshall,1959slp,amp,3500000,,마샬 1959SLP 플렉시 리이슈
+engl,fireball 25,amp,1500000,,앵글 파이어볼 25
+engl,powerball ii,amp,2800000,,앵글 파워볼 II
+diezel,vh4,amp,5500000,,디젤 VH4 헤드 (툴/메탈리카)
+bogner,ecstasy 3534,amp,3200000,,보그너 엑스터시 3534
+friedman,be-100 deluxe,amp,5500000,,프리드만 BE-100 디럭스
+friedman,jj junior,amp,2500000,,프리드만 JJ 주니어 (제리 캔트렐)
+soldano,slo-100,amp,6000000,,솔다노 SLO-100
+peavey,6505 plus,amp,1800000,,피비 6505+ 헤드
+evh,5150 iii 50w,amp,1800000,,EVH 5150 III 50W
+orange,rockerverb 50 mkiii,amp,2800000,,오렌지 로커버브 50 MkIII
+hughes & kettner,grandmeister deluxe 40,amp,1800000,,휴거스앤케트너 그랜드마이스터 40
+shure,sm57,recording,130000,,슈어 SM57 다이나믹 마이크
+shure,sm58,recording,130000,,슈어 SM58 보컬 마이크
+shure,sm7b,recording,600000,,슈어 SM7B 방송용 마이크
+sennheiser,e906,recording,250000,,젠하이저 e906 (기타 앰프 마이킹용)
+universal audio,apollo twin x duo,recording,1400000,,유니버설 오디오 아폴로 트윈 X 듀오
+focusrite,scarlett 2i2 4th gen,recording,280000,,포커스라이트 스칼렛 2i2 4세대
+rme,babyface pro fs,recording,1300000,,RME 베이비페이스 프로 FS
+neumann,tlm 102,recording,1000000,,노이만 TLM 102 콘덴서 마이크
+cloud,cloudlifter cl-1,recording,200000,,클라우드리프터 CL-1 (마이크 프리앰프)
+two notes,torpedo captor x,effect,850000,,투노츠 토피도 캡터 X (로드박스)
+suhr,reactive load ir,effect,950000,,써 리액티브 로드 IR
+seymour duncan,sh-4 jb,parts,120000,,세이모어 던컨 SH-4 JB 픽업
+seymour duncan,sh-1 59,parts,120000,,세이모어 던컨 SH-1 59 픽업
+dimarzio,tone zone,parts,110000,,디마지오 톤존 픽업
+emg,81,parts,130000,,EMG 81 액티브 픽업
+emg,85,parts,130000,,EMG 85 액티브 픽업
+fishman,fluence modern,parts,300000,,피쉬맨 플루언스 모던 세트
+cioks,dc7,parts,320000,,시오스 DC7 파워 서플라이
+strymon,zuma,parts,350000,,스트라이몬 주마 파워 서플라이
+voodoo lab,pedal power 3 plus,parts,350000,,부두랩 페달 파워 3 플러스
+monoprice,stage right 15w,amp,150000,,모노프라이스 15W 튜브 앰프 (가성비)
+joyo,american sound,effect,450000,,조요 아메리칸 사운드 (가성비 앰프심)
+donner,yellow fall,effect,35000,,도너 옐로우 폴 딜레이
+nux,atlantic,effect,160000,,눅스 아틀란틱 딜레이 리버브
+caline,pure sky,effect,40000,,칼린 퓨어 스카이 (티미 카피)
+mosky,golden horse,effect,30000,,모스키 골든 호스 (클론 카피)

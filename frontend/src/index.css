@@ -34,7 +34,7 @@
 
   body {
     font-family: var(--font-body);
-    background: linear-gradient(135deg, var(--color-matcha-50) 0%, var(--color-cream-50) 100%);
+    background: linear-gradient(135deg, #FDFBF7 0%, #F9F8F4 100%);
     min-height: 100vh;
     color: var(--color-stone-800);
     @apply antialiased;

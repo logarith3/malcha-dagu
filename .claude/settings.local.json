@@ -4,7 +4,8 @@
       "Bash(xargs -I {} bash -c 'wc -l \"\"{}\"\" | awk \"\"{print \\\\$1 \\\\\"\" {} \\\\\"\"}\"\"')",
       "Bash(sort:*)",
       "Bash(python:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm run type-check:*)"
     ]
   }
 }

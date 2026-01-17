@@ -24,6 +24,13 @@ export async function search(query: string, display = 20): Promise<SearchResult>
     return response.data;
 }
 
+export async function getPopularSearches(limit = 4): Promise<string[]> {
+    const response = await api.get<{ terms: string[] }>('/popular-searches/', {
+        params: { limit },
+    });
+    return response.data.terms;
+}
+
 // =============================================================================
 // Instrument API
 // =============================================================================
@@ -74,6 +81,24 @@ export async function createUserItem(data: {
 
 export async function trackItemClick(id: string): Promise<UserItem> {
     const response = await api.post<UserItem>(`/items/${id}/click/`);
+    return response.data;
+}
+
+export async function extendUserItem(id: string): Promise<UserItem> {
+    const response = await api.post<UserItem>(`/items/${id}/extend/`);
+    return response.data;
+}
+
+export async function reportUserItem(id: string, data: {
+    reason: string;
+    detail?: string;
+}): Promise<{ message: string; report_count: number; is_under_review: boolean; is_deleted: boolean }> {
+    const response = await api.post(`/items/${id}/report/`, data);
+    return response.data;
+}
+
+export async function updateItemPrice(id: string, price: number): Promise<UserItem> {
+    const response = await api.post<UserItem>(`/items/${id}/update_price/`, { price });
     return response.data;
 }
 
