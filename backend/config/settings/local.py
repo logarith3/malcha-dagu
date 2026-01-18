@@ -5,7 +5,7 @@ DEBUG = True
 # 로컬호스트 모두 허용
 ALLOWED_HOSTS = ['*']
 
-# 개발용 SQLite
+# 개발용 SQLite 데이터베이스 사용
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -21,23 +21,28 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:5173',
 ]
 CORS_ALLOW_CREDENTIALS = True
-
-# CSRF 신뢰
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
 # JWT Cookie (개발용 보안 완화)
 SIMPLE_JWT['AUTH_COOKIE_SECURE'] = False
-SIMPLE_JWT['AUTH_COOKIE_DOMAIN'] = None # 로컬호스트는 도메인 설정 불필요
+SIMPLE_JWT['AUTH_COOKIE_DOMAIN'] = None
 
 # Browsable API 활성화 (개발할 때 편함)
-REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'].append(
-    'rest_framework.renderers.BrowsableAPIRenderer'
-)
+if 'rest_framework' in INSTALLED_APPS:
+    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'].append(
+        'rest_framework.renderers.BrowsableAPIRenderer'
+    )
 
-# 로컬 캐시 (Redis 없어도 돌아가게)
+# 로컬 캐시 (Redis 없이 메모리 사용)
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         'LOCATION': 'unique-snowflake',
     }
 }
+
+# =========================================================
+# [중요] 네이버 API 키 강제 설정 (따옴표 안에 키를 넣으세요)
+# =========================================================
+NAVER_CLIENT_ID = 'MQM3ivXPDTKYHxTNCxie'
+NAVER_CLIENT_SECRET = 'e0rnqffhai'
