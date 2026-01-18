@@ -1,0 +1,41 @@
+brand,name,category,reference_price,image_url,description
+boss,rv-6,effect,240000,,BOSS 리버브의 표준
+boss,dd-3t,effect,200000,,BOSS 디지털 딜레이 클래식
+boss,sd-1,effect,80000,,BOSS 슈퍼 오버드라이브
+boss,ns-2,effect,150000,,BOSS 노이즈 서프레서
+boss,tu-3,effect,140000,,BOSS 크로매틱 튜너
+mxr,m102 dyna comp,effect,130000,,MXR 다이나 컴프 컴프레서
+mxr,m108s 10 band eq,effect,220000,,MXR 10밴드 그래픽 이퀄라이저
+mxr,m169 carbon copy,effect,220000,,MXR 카본 카피 아날로그 딜레이
+electro-harmonix,canyon,effect,250000,,EHX 캐년 딜레이 리버브
+electro-harmonix,soul food,effect,150000,,EHX 소울 푸드 (클론 타입)
+electro-harmonix,oceans 11,effect,260000,,EHX 오션스 11 리버브
+tc electronic,spark booster,effect,100000,,TC 스파크 부스터
+tc electronic,mojomojo,effect,80000,,TC 모조모조 오버드라이브
+wampler,tumnus,effect,250000,,왐플러 텀너스 (미니 클론)
+wampler,pinnacle deluxe v2,effect,350000,,왐플러 피나클 (브라운 사운드)
+jhs,3 series reverb,effect,150000,,JHS 3 시리즈 리버브
+jhs,the kilt v2,effect,320000,,JHS 더 킬트 (드라이브/부스트)
+walrus audio,eras,effect,320000,,월러스 오디오 에라스 디스토션
+walrus audio,eb-10,effect,350000,,월러스 오디오 프리앰프 EQ
+strymon,nightsky,effect,750000,,스트라이몬 나이트스카이 타임 워프 리버브
+strymon,volante,effect,650000,,스트라이몬 볼란테 마그네틱 에코
+universal audio,starlight,effect,550000,,UAFX 스타라이트 에코 스테이션
+universal audio,astra,effect,550000,,UAFX 아스트라 모듈레이션
+xotic,xw-1 wah,effect,420000,,엑조틱 XW-1 하이엔드 와우
+dunlop,tm95 tak matsumoto wah,effect,350000,,던롭 탁 마츠모토 시그니처 와우
+keeley,d&m drive,effect,350000,,킬리 D&M 드라이브 (대니&믹)
+darkglass,microtubes b7k v2,effect,450000,,다크글래스 B7K 베이스 프리앰프
+darkglass,exponent 500,amp,1200000,,다크글래스 엑스포넌트 앰프 헤드
+fender,rumble 40 v3,amp,350000,,펜더 럼블 베이스 앰프
+fender,tone master deluxe reverb,amp,1600000,,펜더 톤 마스터 디지털 앰프
+marshall,origin 50c,amp,1100000,,마샬 오리진 50W 콤보
+marshall,code 50,amp,450000,,마샬 코드 디지털 모델링 앰프
+vox,vt20x,amp,250000,,복스 발베트로닉스 하이브리드 앰프
+orange,super crush 100,amp,850000,,오렌지 슈퍼 크러쉬 솔리드 스테이트
+orange,micro dark,amp,280000,,오렌지 마이크로 다크 하이브리드 헤드
+blackstar,silverline special,amp,750000,,블랙스타 실버라인 콤보
+positive grid,spark go,amp,220000,,포지티브 그리드 스파크 고 (초소형)
+line 6,catalyst 60,amp,450000,,라인6 카탈리스트 모델링 앰프
+yamaha,thr5,amp,280000,,야마하 THR5 데스크탑 앰프
+boss,katana-air,amp,650000,,BOSS 카타나 에어 무선 앰프
