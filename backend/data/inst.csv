@@ -1,0 +1,59 @@
+brand,name,category,reference_price,image_url,description
+fender,guitar,guitar,2200000,,펜더 일렉 기타
+fender,stratocaster,guitar,2400000,,펜더 스트라토캐스터
+fender,telecaster,guitar,2300000,,펜더 텔레캐스터
+fender,jazzmaster,guitar,2500000,,펜더 재즈마스터
+fender,jaguar,guitar,2500000,,펜더 재규어
+fender,bass,bass,2400000,,펜더 베이스 기타
+fender,jazz bass,bass,2500000,,펜더 재즈 베이스
+fender,precision bass,bass,2400000,,펜더 프레시전 베이스
+fender,amp,amp,1500000,,펜더 기타 앰프
+gibson,guitar,guitar,3800000,,깁슨 일렉 기타
+gibson,les paul,guitar,3800000,,깁슨 레스폴
+gibson,sg,guitar,2400000,,깁슨 SG
+gibson,es-335,guitar,5500000,,깁슨 세미할로우 기타
+gibson,explorer,guitar,2800000,,깁슨 익스플로러
+gibson,flying v,guitar,2800000,,깁슨 플라잉 V
+gibson,acoustic,acoustic,3500000,,깁슨 어쿠스틱 기타
+prs,guitar,guitar,3500000,,PRS 일렉 기타
+prs,custom 24,guitar,5500000,,PRS 커스텀 24
+prs,silver sky,guitar,3200000,,PRS 실버스카이
+ibanez,guitar,guitar,1500000,,아이바네즈 일렉 기타
+ibanez,rg,guitar,1300000,,아이바네즈 RG 시리즈
+ibanez,az,guitar,2600000,,아이바네즈 AZ 시리즈
+ibanez,bass,bass,1100000,,아이바네즈 베이스 기타
+cort,guitar,guitar,600000,,콜트 일렉 기타
+cort,bass,bass,700000,,콜트 베이스 기타
+cort,acoustic,acoustic,400000,,콜트 어쿠스틱 기타
+yamaha,guitar,guitar,900000,,야마하 일렉 기타
+yamaha,bass,bass,850000,,야마하 베이스 기타
+yamaha,acoustic,acoustic,700000,,야마하 어쿠스틱 기타
+yamaha,amp,amp,450000,,야마하 기타 앰프
+epiphone,guitar,guitar,850000,,에피폰 일렉 기타
+epiphone,les paul,guitar,900000,,에피폰 레스폴
+squier,guitar,guitar,600000,,스콰이어 일렉 기타
+squier,stratocaster,guitar,600000,,스콰이어 스트라토캐스터
+suhr,guitar,guitar,4800000,,써 일렉 기타
+suhr,classic s,guitar,4800000,,써 클래식 S
+musicman,guitar,guitar,4500000,,뮤직맨 일렉 기타
+musicman,stingray,bass,3500000,,뮤직맨 스팅레이 베이스
+gretsch,guitar,guitar,2500000,,그레치 일렉 기타
+martin,acoustic,acoustic,4500000,,마틴 어쿠스틱 기타
+taylor,acoustic,acoustic,4000000,,테일러 어쿠스틱 기타
+marshall,amp,amp,1500000,,마샬 기타 앰프
+vox,amp,amp,1200000,,복스 기타 앰프
+orange,amp,amp,1100000,,오렌지 기타 앰프
+boss,effect,effect,200000,,보스 이펙터
+boss,distortion,effect,120000,,보스 디스토션
+boss,overdrive,effect,150000,,보스 오버드라이브
+boss,delay,effect,250000,,보스 딜레이
+boss,reverb,effect,280000,,보스 리버브
+strymon,effect,effect,600000,,스트라이몬 이펙터
+strymon,reverb,effect,680000,,스트라이몬 리버브
+strymon,delay,effect,650000,,스트라이몬 딜레이
+mxr,effect,effect,180000,,MXR 이펙터
+ehx,effect,effect,150000,,일렉트로 하모닉스 이펙터
+line 6,effect,effect,1200000,,라인6 이펙터
+line 6,helix,effect,2400000,,라인6 힐릭스
+shure,mic,mic,300000,,슈어 마이크
+sennheiser,mic,mic,350000,,젠하이저 마이크
