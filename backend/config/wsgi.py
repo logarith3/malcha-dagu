@@ -1,18 +1,20 @@
 """
 WSGI config for config project.
-
-It exposes the WSGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/5.2/howto/deployment/wsgi/
 """
 
 import os
+import sys
+from pathlib import Path
 
 from django.core.wsgi import get_wsgi_application
 
-# [수정됨] 기본 설정 경로를 'config.settings.prod'로 변경
-# Heroku에서 Gunicorn이 실행될 때 이 배포용 설정을 불러오게 됩니다.
+# [추가됨] 현재 파일(wsgi.py)의 2단계 상위 폴더(backend)를 경로에 추가
+# 이렇게 해야 'config.settings'를 찾을 수 있습니다.
+path = Path(__file__).resolve().parent.parent
+if str(path) not in sys.path:
+    sys.path.append(str(path))
+
+# [기존 설정 유지]
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.prod')
 
 application = get_wsgi_application()
