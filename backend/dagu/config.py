@@ -504,7 +504,7 @@ class FilterConfig:
         # 4. 문서/잡동사니
         'manual', 'instruction', 'warranty', 'certificate', 'book',
         'logo', 'decal', 'poster', 'catalog',
-        '설명서', '메뉴얼', '보증서', '교본', '로고', '포스터', '카트리지', '그릴', '마이크 솜',
+        '설명서', '메뉴얼', '보증서', '교본', '로고', '포스터', '카트리지', '그릴', '마이크 솜', '티',
         
         # 5. 짝퉁/복제품
         'copy', 'replica', 'clone', 'fake', 'style', 'type',
