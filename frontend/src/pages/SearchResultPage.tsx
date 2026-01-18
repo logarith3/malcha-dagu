@@ -347,35 +347,61 @@ export default function SearchResultPage() {
                                     <h3 className="text-sm font-bold text-stone-500 mb-3 uppercase tracking-wider">다른 사이트에서 찾기</h3>
                                     <ExternalSearchButtons query={externalSearchQuery} vertical={true} />
                                 </div>
-                                {/* 추후 다른 사이드바 컨텐츠 추가 가능 (예: 광고, 추천 검색어 등) */}
+                                {/* PC용 매물등록 버튼 */}
+                                <button
+                                    onClick={() => {
+                                        if (!isLoggedIn) {
+                                            window.location.href = '/login';
+                                            return;
+                                        }
+                                        setShowRegisterModal(true);
+                                    }}
+                                    className="
+                                        flex items-center justify-between px-5 py-4
+                                        rounded-xl bg-matcha-100 text-matcha-700
+                                        hover:bg-matcha-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-matcha-200/50
+                                        transition-all duration-200 group w-full
+                                    "
+                                >
+                                    <span className="font-bold text-base">매물등록</span>
+                                    <svg className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:opacity-100 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4.5v15m7.5-7.5h-15" />
+                                    </svg>
+                                </button>
                             </div>
                         </aside>
 
                     </main>
 
-                    {/* FAB (매물 등록) - 로그인 시에만 표시 */}
-                    {isLoggedIn && (
-                        <motion.button
-                            onClick={() => setShowRegisterModal(true)}
-                            className="
-                                fixed bottom-8 right-8 z-50
-                                w-14 h-14 rounded-full
-                                bg-matcha-500 text-white
-                                shadow-[0_4px_0_0_#16a34a]
-                                flex items-center justify-center
-                                hover:bg-matcha-600 active:shadow-[0_2px_0_0_#16a34a] active:translate-y-[2px]
-                                transition-all duration-150
-                            "
-                            initial={{ scale: 0, rotate: 90 }}
-                            animate={{ scale: 1, rotate: 0 }}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                            </svg>
-                        </motion.button>
-                    )}
+                    {/* FAB (매물 등록) - 모바일에서만 표시 (PC는 사이드바에 있음) */}
+                    <motion.button
+                        onClick={() => {
+                            if (!isLoggedIn) {
+                                window.location.href = '/login';
+                                return;
+                            }
+                            setShowRegisterModal(true);
+                        }}
+                        className="
+                            lg:hidden
+                            fixed bottom-8 right-8 z-50
+                            px-5 py-3 rounded-full
+                            bg-matcha-500 text-white
+                            shadow-[0_4px_0_0_#16a34a]
+                            flex items-center justify-center gap-2
+                            hover:bg-matcha-600 active:shadow-[0_2px_0_0_#16a34a] active:translate-y-[2px]
+                            transition-all duration-150
+                        "
+                        initial={{ scale: 0, rotate: 90 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        <span className="font-bold text-sm">매물등록</span>
+                    </motion.button>
                 </motion.div>
             )}
 

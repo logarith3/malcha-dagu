@@ -17,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from .models import Instrument, ItemReport, SearchQuery, UserItem
+from .models import Instrument, ItemClick, ItemReport, SearchQuery, UserItem
 from .serializers import (
     AIDescriptionRequestSerializer,
     AIDescriptionResponseSerializer,
@@ -154,15 +154,19 @@ class SearchView(APIView):
 
 class PopularSearchView(APIView):
     """
-    인기 검색어 API.
-    최근 7일간 가장 많이 검색된 검색어 반환.
+    인기 검색어(트렌딩) API.
+    최근 클릭 수 기반 "지금 뜨는" 악기 반환.
 
     GET /api/popular-searches/?limit=4
+
+    트렌딩 로직:
+    1시간 내 클릭 많은 순 → 데이터 부족 시 24시간 확장 → 그래도 부족 시 검색 횟수 fallback
     """
     permission_classes = [AllowAny]
 
     def get(self, request):
         from datetime import timedelta
+        from django.db.models import Count
 
         # 파라미터
         try:
@@ -171,23 +175,60 @@ class PopularSearchView(APIView):
             limit = 4
         limit = min(max(limit, 1), 10)  # 1~10 범위
 
-        # 최근 7일간 인기 검색어
-        week_ago = timezone.now() - timedelta(days=7)
-        popular = SearchQuery.objects.filter(
-            last_searched_at__gte=week_ago
-        ).order_by('-search_count')[:limit]
+        terms = []
+        seen_ids = set()
 
-        # 검색어만 반환
-        terms = [item.query for item in popular]
+        # 1단계: 최근 1시간 클릭 기준 트렌딩
+        one_hour_ago = timezone.now() - timedelta(hours=1)
+        hourly_trending = UserItem.objects.filter(
+            clicks__clicked_at__gte=one_hour_ago,
+            is_active=True,
+        ).annotate(
+            recent_clicks=Count('clicks')
+        ).order_by('-recent_clicks')[:limit]
 
-        # 결과가 부족하면 기본값 추가
+        for item in hourly_trending:
+            term = f"{item.instrument.brand} {item.instrument.name}"
+            if term not in terms:
+                terms.append(term)
+                seen_ids.add(item.id)
+
+        # 2단계: 데이터 부족 시 24시간으로 확장
+        if len(terms) < limit:
+            day_ago = timezone.now() - timedelta(hours=24)
+            daily_trending = UserItem.objects.filter(
+                clicks__clicked_at__gte=day_ago,
+                is_active=True,
+            ).exclude(
+                id__in=seen_ids
+            ).annotate(
+                recent_clicks=Count('clicks')
+            ).order_by('-recent_clicks')[:limit - len(terms)]
+
+            for item in daily_trending:
+                term = f"{item.instrument.brand} {item.instrument.name}"
+                if term not in terms:
+                    terms.append(term)
+                    seen_ids.add(item.id)
+
+        # 3단계: 그래도 부족하면 검색 횟수 fallback
+        if len(terms) < limit:
+            week_ago = timezone.now() - timedelta(days=7)
+            popular = SearchQuery.objects.filter(
+                last_searched_at__gte=week_ago
+            ).order_by('-search_count')[:limit - len(terms)]
+
+            for item in popular:
+                if item.query not in terms:
+                    terms.append(item.query)
+
+        # 4단계: 최종 fallback - 기본값 추가
         defaults = ['펜더 스트랫', '깁슨 레스폴', '테일러 어쿠스틱', 'SM58']
-        while len(terms) < limit:
-            for d in defaults:
-                if d not in terms and len(terms) < limit:
-                    terms.append(d)
+        for d in defaults:
+            if d not in terms and len(terms) < limit:
+                terms.append(d)
 
-        return Response({'terms': terms})
+        return Response({'terms': terms[:limit]})
 
 
 # =============================================================================
@@ -427,6 +468,7 @@ class UserItemViewSet(viewsets.ModelViewSet):
         클릭 추적 API.
         - click_count 증가 (Atomic Update로 동시성 문제 방지)
         - expired_at 12시간 연장
+        - ItemClick 로그 기록 (트렌딩 계산용)
         """
         item = self.get_object()
 
@@ -436,6 +478,8 @@ class UserItemViewSet(viewsets.ModelViewSet):
                 click_count=F('click_count') + 1,
                 expired_at=timezone.now() + timezone.timedelta(hours=12),
             )
+            # 클릭 로그 저장 (트렌딩 계산용)
+            ItemClick.objects.create(item=item)
 
         # 갱신된 데이터 반환
         item.refresh_from_db()

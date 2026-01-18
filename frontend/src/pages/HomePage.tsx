@@ -88,7 +88,7 @@ export default function HomePage() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
                 >
-                    <span className="text-sm font-medium text-stone-400 uppercase tracking-widest text-[11px] mb-2">인기 검색어</span>
+                    <span className="text-sm font-medium text-stone-400 uppercase tracking-widest text-[11px] mb-2">인기 매물</span>
                     <div className="flex flex-wrap justify-center gap-2.5">
                         {popularTerms.map((term, i) => (
                             <motion.button

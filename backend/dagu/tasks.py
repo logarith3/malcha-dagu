@@ -8,7 +8,7 @@ import logging
 from celery import shared_task
 from django.utils import timezone
 
-from .models import UserItem
+from .models import ItemClick, UserItem
 
 logger = logging.getLogger(__name__)
 
@@ -67,3 +67,29 @@ def purge_old_inactive_items(days=30):
         logger.info(f"Purged {count} old inactive items")
     
     return f"Purged {count} items"
+
+
+@shared_task(name='dagu.cleanup_old_click_logs')
+def cleanup_old_click_logs(days=7):
+    """
+    오래된 클릭 로그 삭제.
+    DB 용량 관리를 위해 7일 지난 로그 삭제.
+    매일 1회 실행 권장.
+
+    Args:
+        days: 며칠 지난 클릭 로그를 삭제할지 (기본: 7일)
+    """
+    from datetime import timedelta
+
+    cutoff_date = timezone.now() - timedelta(days=days)
+
+    old_clicks = ItemClick.objects.filter(clicked_at__lt=cutoff_date)
+    count = old_clicks.count()
+
+    if count > 0:
+        old_clicks.delete()
+        logger.info(f"Deleted {count} old click logs (older than {days} days)")
+    else:
+        logger.debug("No old click logs to cleanup")
+
+    return f"Deleted {count} click logs"

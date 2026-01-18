@@ -242,3 +242,27 @@ class ItemReport(models.Model):
 
     def __str__(self):
         return f"{self.item} - {self.get_reason_display()}"
+
+
+class ItemClick(models.Model):
+    """
+    클릭 로그 (트렌딩 계산용).
+    시간대별 클릭 수를 집계하여 "지금 뜨는" 악기를 표시.
+    """
+    item = models.ForeignKey(
+        UserItem,
+        on_delete=models.CASCADE,
+        related_name='clicks',
+        verbose_name='매물'
+    )
+    clicked_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = '클릭 로그'
+        verbose_name_plural = '클릭 로그 목록'
+        indexes = [
+            models.Index(fields=['clicked_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.item} - {self.clicked_at}"
