@@ -113,7 +113,8 @@ export default function ItemCard({
     const imageUrl = 'image' in item ? item.image : '';
 
     const handleClick = () => {
-        window.open(item.link, '_blank', 'noopener,noreferrer');
+        // noopener만 사용 (noreferrer 제거) - 네이버가 Referer 헤더를 확인하므로 정상 유입으로 인식됨
+        window.open(item.link, '_blank', 'noopener');
         onClick?.();
     };
 
