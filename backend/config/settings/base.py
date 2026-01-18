@@ -3,7 +3,10 @@ from pathlib import Path
 from datetime import timedelta
 import environ
 
-# [중요] settings/ 폴더 안으로 들어왔으므로 parent를 3번 해야 manage.py 위치가 됨
+# =============================================================================
+# 1. Path Setup
+# =============================================================================
+# backend/config/settings/base.py 위치 기준 -> 3단계 위가 backend 폴더
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # environ 초기화
@@ -14,9 +17,8 @@ if env_file.exists():
     environ.Env.read_env(str(env_file))
 
 # =============================================================================
-# Core Settings
+# 2. Core Config
 # =============================================================================
-# SSO: Malcha와 동일한 SECRET_KEY 사용
 SECRET_KEY = env('SHARED_SECRET_KEY', default=env('SECRET_KEY', default='django-insecure-dev-key'))
 
 INSTALLED_APPS = [
@@ -30,29 +32,23 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    # 'django_celery_beat', # 필요시 주석 해제
     # Local apps
     'dagu',
 ]
 
-# Celery Beat (있으면 추가)
-try:
-    import django_celery_beat
-    INSTALLED_APPS.append('django_celery_beat')
-except ImportError:
-    pass
-
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware', # [필수] WhiteNoise는 Base에 두는 게 좋음
-    'config.middleware.SecurityHeadersMiddleware', # 커스텀
+    'whitenoise.middleware.WhiteNoiseMiddleware', # [필수] 정적 파일 서빙
+    'config.middleware.SecurityHeadersMiddleware', # 커스텀 미들웨어 (파일 존재 확인 필요)
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'config.middleware.RequestLoggingMiddleware',  # 커스텀
+    # 'config.middleware.RequestLoggingMiddleware', # 필요시 주석 해제
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -75,7 +71,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # =============================================================================
-# Internationalization & Static
+# 3. Static & I18N
 # =============================================================================
 LANGUAGE_CODE = 'ko-kr'
 TIME_ZONE = 'Asia/Seoul'
@@ -84,10 +80,13 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+# prod.py에서 extend 하기 위해 미리 정의
+STATICFILES_DIRS = []
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # =============================================================================
-# REST Framework & JWT
+# 4. REST Framework & JWT
 # =============================================================================
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
@@ -107,6 +106,7 @@ REST_FRAMEWORK = {
         'user': '1000/hour',
         'search': '60/minute',
     },
+    # 파일이 실제로 존재하는지 확인하고, 없다면 주석 처리하세요.
     'EXCEPTION_HANDLER': 'dagu.exceptions.custom_exception_handler',
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'dagu.authentication.JWTCookieAuthentication',
@@ -122,7 +122,7 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_COOKIE": "malcha-access-token",
     "AUTH_COOKIE_HTTP_ONLY": True,
-    "AUTH_COOKIE_SAMESITE": "Lax", # Prod에서 Strict로 변경 고려
+    "AUTH_COOKIE_SAMESITE": "Lax",
     "ISSUER": "malchalab.com",
     "AUDIENCE": "dagu.malchalab.com",
     "JTI_CLAIM": "jti",
@@ -131,7 +131,7 @@ SIMPLE_JWT = {
 }
 
 # =============================================================================
-# External API Keys
+# 5. External API Keys
 # =============================================================================
 NAVER_CLIENT_ID = env('NAVER_CLIENT_ID', default='')
 NAVER_CLIENT_SECRET = env('NAVER_CLIENT_SECRET', default='')

@@ -1,36 +1,44 @@
-from .base import *
+from .base import * # base.py의 모든 설정을 가져옴
 import dj_database_url
+import os
 
 DEBUG = False
 
-# Heroku 도메인 추가 (앱 이름 바뀌면 수정 필요)
+# =============================================================================
+# 1. Host & Database
+# =============================================================================
 ALLOWED_HOSTS = [
-    'malcha-dagu-7939098a2a2e.herokuapp.com',  # 내 헤로쿠 주소
-    '.herokuapp.com',  # 혹시 모를 서브도메인 대비
-    # '*'  <-- 너무 귀찮으면 이렇게 별표(모두 허용)를 넣어도 되지만, 보안상 비추천입니다.
+    'malcha-dagu-7939098a2a2e.herokuapp.com',
+    '.herokuapp.com',
 ]
-# [DB] Heroku Postgres 연결 (DATABASE_URL 환경변수 자동 사용)
+
+# Heroku Postgres 연결
 DATABASES = {
     'default': dj_database_url.config(conn_max_age=600, ssl_require=True)
 }
 
-# [React 통합] 프론트엔드 빌드 결과물(dist) 연결
-# 주의: package.json에서 빌드한 위치가 frontend/dist 라고 가정
-FRONTEND_DIST = BASE_DIR / '../frontend/dist'
+# =============================================================================
+# 2. React Integration (핵심)
+# =============================================================================
+# BASE_DIR은 'backend' 폴더입니다.
+# React 빌드 폴더는 backend와 형제 위치인 'frontend/dist'에 있습니다.
+FRONTEND_DIST = BASE_DIR.parent / 'frontend' / 'dist'
 
-# 1. 템플릿 경로에 추가 (index.html 찾기 위함)
+# (1) Template 경로 추가: Django가 index.html을 찾을 수 있게 함
 TEMPLATES[0]['DIRS'] += [FRONTEND_DIST]
 
-# 2. 정적 파일 경로에 추가 (js, css 찾기 위함)
-STATICFILES_DIRS = [
+# (2) Static 경로 추가: Django가 리액트의 js, css, assets를 찾을 수 있게 함
+STATICFILES_DIRS += [
     FRONTEND_DIST,
 ]
 
-# [Static] WhiteNoise 압축 및 캐싱 최적화
+# WhiteNoise 설정 (정적 파일 압축 및 서빙)
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
-# [Security] 보안 강화
+# =============================================================================
+# 3. Security & SSL
+# =============================================================================
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 31536000
@@ -42,29 +50,44 @@ SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = 'DENY'
 
-# [SSO] 도메인 쿠키 설정
-COOKIE_DOMAIN = '.malchalab.com'
-SIMPLE_JWT['AUTH_COOKIE_DOMAIN'] = COOKIE_DOMAIN
-SIMPLE_JWT['AUTH_COOKIE_SECURE'] = True
-SESSION_COOKIE_DOMAIN = COOKIE_DOMAIN
-CSRF_COOKIE_DOMAIN = COOKIE_DOMAIN
 
-# [CORS] 실제 운영 도메인만 허용
+# =============================================================================
+# 4. Domain & CORS (Heroku 테스트용 수정)
+# =============================================================================
+
+# [주의] '.malchalab.com'으로 고정하면 헤로쿠 주소에서 로그인이 안 됩니다.
+# 헤로쿠 테스트 중에는 주석 처리하여 현재 도메인(herokuapp.com)을 따르게 합니다.
+# COOKIE_DOMAIN = '.malchalab.com'  <-- 나중에 실제 도메인 연결하면 주석 해제하세요.
+
+# SIMPLE_JWT 설정 업데이트
+# SIMPLE_JWT['AUTH_COOKIE_DOMAIN'] = COOKIE_DOMAIN <-- 주석 처리
+
+SIMPLE_JWT['AUTH_COOKIE_SECURE'] = True
+# SESSION_COOKIE_DOMAIN = COOKIE_DOMAIN <-- 주석 처리
+# CSRF_COOKIE_DOMAIN = COOKIE_DOMAIN    <-- 주석 처리
+
+# CORS 허용 도메인 (헤로쿠 주소 포함)
 CORS_ALLOWED_ORIGINS = [
     'https://malchalab.com',
     'https://dagu.malchalab.com',
+    'https://malcha-dagu-7939098a2a2e.herokuapp.com', # 이거 꼭 있어야 400 에러 안 남
 ]
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
-# [Redis] Heroku Redis 연결
-REDIS_URL = env('REDIS_URL', default='redis://localhost:6379/0')
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': REDIS_URL,
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+
+# =============================================================================
+# 5. Redis (Heroku)
+# =============================================================================
+REDIS_URL = env('REDIS_URL', default=None)
+
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            }
         }
     }
-}
