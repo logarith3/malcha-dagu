@@ -4,8 +4,11 @@ import dj_database_url
 DEBUG = False
 
 # Heroku 도메인 추가 (앱 이름 바뀌면 수정 필요)
-ALLOWED_HOSTS = ['malcha-dagu.herokuapp.com', 'dagu.malchalab.com']
-
+ALLOWED_HOSTS = [
+    'malcha-dagu-7939098a2a2e.herokuapp.com',  # 내 헤로쿠 주소
+    '.herokuapp.com',  # 혹시 모를 서브도메인 대비
+    # '*'  <-- 너무 귀찮으면 이렇게 별표(모두 허용)를 넣어도 되지만, 보안상 비추천입니다.
+]
 # [DB] Heroku Postgres 연결 (DATABASE_URL 환경변수 자동 사용)
 DATABASES = {
     'default': dj_database_url.config(conn_max_age=600, ssl_require=True)
