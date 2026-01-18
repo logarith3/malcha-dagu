@@ -16,7 +16,7 @@ from django.conf import settings
 from django.core.cache import cache
 
 from ..config import CrawlerConfig
-from ..filters import filter_naver_item, filter_naver_item_with_reason
+from ..filters import filter_naver_item, filter_naver_item_with_reason, calculate_dynamic_min_price
 from .utils import normalize_brand
 
 logger = logging.getLogger(__name__)
@@ -126,6 +126,7 @@ class NaverShoppingService:
         brand: str | None = None,
         category: str | None = None,
         min_price: int | None = None,
+        reference_price: int | None = None,
     ) -> list[dict[str, Any]]:
         """
         네이버 쇼핑 API 검색 + 필터링.
@@ -137,6 +138,7 @@ class NaverShoppingService:
             brand: 브랜드 필터 (선택)
             category: 카테고리 필터 (선택)
             min_price: 최소 가격 필터 (선택)
+            reference_price: 신품 기준가 (있으면 이 값의 10%를 최소가로 사용)
 
         Returns:
             필터링된 검색 결과 리스트
@@ -175,7 +177,7 @@ class NaverShoppingService:
 
         # 필터링 적용
         filtered_items = self._apply_filters(
-            raw_items, query, brand, category, min_price, display
+            raw_items, query, brand, category, min_price, reference_price, display
         )
 
         # 스코어순 -> 가격순 정렬
@@ -192,6 +194,7 @@ class NaverShoppingService:
         brand: str | None,
         category: str | None,
         min_price: int | None,
+        reference_price: int | None,
         display: int,
     ) -> list[dict]:
         """아이템 필터링 적용 (상세 로그 포함)"""
@@ -203,8 +206,25 @@ class NaverShoppingService:
             'category': 0,
             'category_fields': 0,
             'product_type': 0,
+            'dynamic_price': 0,
             'passed': 0,
         }
+
+        # [동적 가격 필터링] reference_price가 없으면 가격 분포 기반으로 최소가 계산
+        dynamic_min_price = None
+        if not reference_price and not min_price:
+            # 먼저 가격 목록 추출 (블랙리스트 제외 전)
+            prices = []
+            for item in items:
+                try:
+                    lprice = int(item.get('lprice', 0))
+                    if lprice > 0:
+                        prices.append(lprice)
+                except (ValueError, TypeError):
+                    pass
+
+            if prices:
+                dynamic_min_price = calculate_dynamic_min_price(prices)
 
         for item in items:
             result, reason = filter_naver_item_with_reason(
@@ -213,8 +233,15 @@ class NaverShoppingService:
                 brand=brand,
                 category=category,
                 min_price=min_price,
+                reference_price=reference_price,
             )
             if result:
+                # 동적 가격 필터 추가 적용 (reference_price 없을 때만)
+                if dynamic_min_price and result['lprice'] < dynamic_min_price:
+                    filter_stats['dynamic_price'] += 1
+                    logger.debug(f"[동적필터] 제외: {result['lprice']:,}원 < {dynamic_min_price:,}원 - {result['title'][:40]}")
+                    continue
+
                 filter_stats['passed'] += 1
                 filtered.append(result)
             else:
@@ -224,6 +251,7 @@ class NaverShoppingService:
         logger.info(
             f"[필터 통계] 통과: {filter_stats['passed']} | "
             f"가격: {filter_stats['price']} | "
+            f"동적가격: {filter_stats['dynamic_price']} | "
             f"블랙리스트: {filter_stats['blacklist']} | "
             f"브랜드: {filter_stats['brand']} | "
             f"카테고리: {filter_stats['category']} | "

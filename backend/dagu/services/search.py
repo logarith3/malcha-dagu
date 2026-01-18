@@ -14,7 +14,7 @@ from django.utils import timezone
 
 from ..config import CategoryConfig
 from ..filters import calculate_match_score, filter_user_item
-from ..models import Instrument, UserItem
+from ..models import Instrument, UserItem, SearchMissLog
 from .naver import NaverShoppingService
 from .utils import (
     normalize_search_term,
@@ -77,11 +77,18 @@ class SearchAggregatorService:
         search_query, brand, category = self._build_search_query(
             query, best_match, brand, category
         )
+
+        # 신품 기준가 가져오기 (가격 필터링용)
+        reference_price = None
+        if best_match:
+            reference_price = best_match[0].reference_price
+
         naver_items = self.naver_service.search(
             query=search_query,
             display=display,
             brand=brand,
             category=category,
+            reference_price=reference_price,
         )
 
         # Step 3: 유저 매물 검색 (동일 필터 적용)
@@ -120,6 +127,7 @@ class SearchAggregatorService:
         pedal_keywords = getattr(CategoryConfig, 'PEDAL_KEYWORDS', [])
         amp_keywords = getattr(CategoryConfig, 'AMP_KEYWORDS', [])
         acoustic_keywords = getattr(CategoryConfig, 'ACOUSTIC_KEYWORDS', [])
+        mic_keywords = getattr(CategoryConfig, 'MIC_KEYWORDS', [])
 
         if any(kw in query_lower for kw in bass_keywords):
             return 'bass'
@@ -129,6 +137,8 @@ class SearchAggregatorService:
             return 'amp'
         if any(kw in query_lower for kw in acoustic_keywords):
             return 'acoustic'
+        if any(kw in query_lower for kw in mic_keywords):
+            return 'mic'
 
         return 'guitar'
 

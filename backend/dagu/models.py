@@ -31,6 +31,7 @@ class Instrument(models.Model):
         ('effect', '이펙터'),
         ('amp', '앰프'),
         ('acoustic', '어쿠스틱'),
+        ('mic', '마이크'),
         ('other', '기타 악기'),
     ]
     
@@ -266,3 +267,66 @@ class ItemClick(models.Model):
 
     def __str__(self):
         return f"{self.item} - {self.clicked_at}"
+
+
+class SearchMissLog(models.Model):
+    """
+    DB 매칭 실패 검색어 로그.
+    자주 검색되지만 DB에 없는 악기를 추적하여 우선 등록 대상 파악.
+    """
+    query = models.CharField(max_length=200, db_index=True, verbose_name='검색어')
+    normalized_query = models.CharField(
+        max_length=200,
+        db_index=True,
+        verbose_name='정규화된 검색어',
+        help_text='소문자, 공백 정리된 검색어'
+    )
+    search_count = models.PositiveIntegerField(default=1, verbose_name='검색 횟수')
+    last_searched_at = models.DateTimeField(auto_now=True, verbose_name='마지막 검색')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    # 처리 상태
+    is_resolved = models.BooleanField(default=False, verbose_name='처리 완료')
+    resolved_at = models.DateTimeField(null=True, blank=True, verbose_name='처리 시점')
+    resolved_instrument = models.ForeignKey(
+        Instrument,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='resolved_misses',
+        verbose_name='등록된 악기'
+    )
+
+    class Meta:
+        verbose_name = '미등록 검색어'
+        verbose_name_plural = '미등록 검색어 목록'
+        ordering = ['-search_count', '-last_searched_at']
+
+    def __str__(self):
+        status = "✓" if self.is_resolved else "○"
+        return f"{status} {self.query} ({self.search_count}회)"
+
+    @classmethod
+    def log_miss(cls, query: str):
+        """
+        검색 미스 기록.
+        이미 있으면 카운트 증가, 없으면 새로 생성.
+        """
+        normalized = query.lower().strip()
+
+        # 너무 짧거나 긴 검색어는 무시
+        if len(normalized) < 2 or len(normalized) > 100:
+            return None
+
+        obj, created = cls.objects.get_or_create(
+            normalized_query=normalized,
+            defaults={'query': query}
+        )
+
+        if not created:
+            # 카운트 증가 (F 표현식으로 race condition 방지)
+            from django.db.models import F
+            cls.objects.filter(pk=obj.pk).update(
+                search_count=F('search_count') + 1
+            )
+
+        return obj

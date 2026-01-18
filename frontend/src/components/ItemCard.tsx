@@ -164,7 +164,7 @@ export default function ItemCard({
                 whileTap={{ scale: 0.98 }}
                 onClick={handleClick}
                 className="
-                    relative flex flex-col p-0 bg-white rounded-[32px]
+                    relative flex flex-col p-0 bg-white rounded-2xl sm:rounded-[32px]
                     cursor-pointer transition-all duration-300
                     hover:-translate-y-2
                     shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)]
@@ -173,7 +173,7 @@ export default function ItemCard({
                 "
             >
                 {/* 이미지 (Top Half Cover) */}
-                <div className="w-full h-48 sm:h-56 relative overflow-hidden bg-stone-50 rounded-t-[32px]">
+                <div className="w-full h-36 sm:h-56 relative overflow-hidden bg-stone-50 rounded-t-2xl sm:rounded-t-[32px]">
                     {imageUrl ? (
                         <img
                             src={imageUrl}
@@ -208,20 +208,20 @@ export default function ItemCard({
                 </div>
 
                 {/* 정보 (Padding) */}
-                <div className="flex-1 flex flex-col p-6">
+                <div className="flex-1 flex flex-col p-3 sm:p-6">
                     {/* 상단: 제목 */}
-                    <div className="mb-4">
-                        <h3 className="text-lg font-bold text-stone-800 line-clamp-2 leading-snug group-hover:text-matcha-700 transition-colors">
+                    <div className="mb-2 sm:mb-4">
+                        <h3 className="text-sm sm:text-lg font-bold text-stone-800 line-clamp-2 leading-snug group-hover:text-matcha-700 transition-colors">
                             {item.title}
                         </h3>
                     </div>
 
                     {/* 하단: 가격 + 할인율 */}
-                    <div className="flex items-end justify-between mt-2">
+                    <div className="flex items-end justify-between mt-auto">
                         <div>
-                            <div className="flex items-baseline gap-1.5">
-                                <p className="text-2xl sm:text-3xl font-black text-stone-900 tracking-tight">
-                                    {formatPrice(item.lprice)}<span className="text-sm sm:text-base font-bold text-stone-400 ml-1">원</span>
+                            <div className="flex items-baseline gap-1">
+                                <p className="text-lg sm:text-3xl font-black text-stone-900 tracking-tight">
+                                    {formatPrice(item.lprice)}<span className="text-xs sm:text-base font-bold text-stone-400 ml-0.5 sm:ml-1">원</span>
                                 </p>
                             </div>
 

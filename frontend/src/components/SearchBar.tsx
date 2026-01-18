@@ -131,7 +131,7 @@ export default function SearchBar({
             <div ref={wrapperRef} className="relative">
                 <div
                     className={`
-                        relative flex items-center gap-2 p-3 rounded-full transition-all duration-300
+                        relative flex items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-full transition-all duration-300
                         ${isFocused
                             ? 'bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-2 ring-matcha-500 transform -translate-y-1'
                             : 'bg-white shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.12)] hover:-translate-y-0.5'
@@ -140,9 +140,9 @@ export default function SearchBar({
                     style={{ backdropFilter: 'blur(8px)' }}
                 >
                     {/* 검색 아이콘 */}
-                    <div className={`pl-4 transition-colors duration-300 ${isFocused ? 'text-matcha-500' : 'text-stone-400'}`}>
+                    <div className={`pl-2 sm:pl-4 transition-colors duration-300 ${isFocused ? 'text-matcha-500' : 'text-stone-400'}`}>
                         <svg
-                            className="w-5 h-5"
+                            className="w-4 h-4 sm:w-5 sm:h-5"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -167,9 +167,9 @@ export default function SearchBar({
                         disabled={isLoading}
                         autoComplete="off"
                         className="
-                            flex-1 py-3 px-2 bg-transparent outline-none
+                            flex-1 py-2 sm:py-3 px-1 sm:px-2 bg-transparent outline-none
                             text-stone-800 placeholder-stone-400
-                            text-base sm:text-lg caret-matcha-500
+                            text-sm sm:text-lg caret-matcha-500 min-w-0
                         "
                     />
 
@@ -180,8 +180,8 @@ export default function SearchBar({
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         className={`
-                            px-8 py-4 rounded-xl font-bold text-lg text-white
-                            transition-all duration-200
+                            px-4 sm:px-8 py-2.5 sm:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-lg text-white
+                            transition-all duration-200 shrink-0
                             ${isLoading
                                 ? 'bg-stone-300 cursor-not-allowed'
                                 : 'bg-[#10B981] hover:bg-[#059669] shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/40 hover:scale-105 active:scale-95'
@@ -190,7 +190,7 @@ export default function SearchBar({
                     >
                         {isLoading ? (
                             <motion.div
-                                className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+                                className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full"
                                 animate={{ rotate: 360 }}
                                 transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                             />

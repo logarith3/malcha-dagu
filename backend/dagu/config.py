@@ -6,11 +6,15 @@ Based on proven filtering patterns for instrument search quality.
 
 class CrawlerConfig:
     """크롤러/API 설정"""
-    
-    # 가격 설정
+
+    # 가격 설정 (신품 기준가 없을 때 폴백용)
     MIN_PRICE_KRW = 200000  # 20만원 (악기 기본)
     MIN_PRICE_PEDAL = 50000 # 5만원 (이펙터/액세서리)
+    MIN_PRICE_MIC = 30000   # 3만원 (마이크)
     MIN_PRICE_USD = 100
+
+    # 신품 기준가 대비 최소가 비율 (45% = 0.45)
+    MIN_PRICE_RATIO = 0.45
     
     # 결과 개수 설정
     MAX_RESULTS_NAVER = 20
@@ -260,6 +264,18 @@ class CategoryConfig:
         'dreadnought', '드레드넛', 'om body', 'om바디', 'ga body', 'ga바디',
         'jumbo', '점보', 'parlor', '팔러', 'cutaway', '컷어웨이', 'pickup', '픽업'
     ]
+
+    MIC_KEYWORDS = [
+        'microphone', 'mic', 'condenser', 'dynamic', 'ribbon', 'wireless',
+        '마이크', '마이크로폰', '콘덴서', '다이나믹', '리본', '무선',
+        # 브랜드
+        'shure', '슈어', 'sennheiser', '젠하이저', 'neumann', '노이만',
+        'akg', 'audio-technica', '오디오테크니카', 'rode', '로데',
+        'blue', 'beyerdynamic', '베이어다이나믹', 'electro-voice', 'ev',
+        'warm audio', '웜오디오', 'lewitt', '루윗',
+        # 모델
+        'sm58', 'sm57', 'sm7b', 'beta58', 'u87', 'tlm103', 'nt1', 'at2020',
+    ]
     # 알려진 브랜드 목록 (브랜드 감지용)
     KNOWN_BRANDS = [
         # ---------------------------------------------------------
@@ -488,7 +504,7 @@ class FilterConfig:
         # 4. 문서/잡동사니
         'manual', 'instruction', 'warranty', 'certificate', 'book',
         'logo', 'decal', 'poster', 'catalog',
-        '설명서', '메뉴얼', '보증서', '교본', '로고', '포스터', '스타일',
+        '설명서', '메뉴얼', '보증서', '교본', '로고', '포스터', '카트리지', '그릴', '마이크 솜',
         
         # 5. 짝퉁/복제품
         'copy', 'replica', 'clone', 'fake', 'style', 'type',
@@ -664,6 +680,18 @@ class FilterConfig:
     EFFECT_CONFIRM_KEYWORDS = [
         'pedal', 'effect', 'stomp', '페달', '이펙터', '이펙트',
     ]
+
+    # 마이크 검색 시 확실한 마이크 확인용
+    MIC_CONFIRM_KEYWORDS = [
+        'microphone', 'mic', 'condenser', 'dynamic', 'vocal',
+        '마이크', '마이크로폰', '콘덴서', '다이나믹', '보컬',
+    ]
+
+    # 마이크 검색 시 제외할 키워드 (기타/베이스/앰프/이펙터)
+    CATEGORY_MIC_EXCLUDE_KEYWORDS = [
+        'guitar', 'bass', 'amp', 'amplifier', 'pedal', 'effect',
+        '기타', '베이스', '앰프', '페달', '이펙터',
+    ]
     
     # BASS/GUITAR 검색 시 어쿠스틱 제외용
     CATEGORY_ACOUSTIC_KEYWORDS = [
@@ -715,6 +743,7 @@ class FilterConfig:
         'bass': ['베이스기타', '일렉트릭베이스', '어쿠스틱베이스', '베이스'],
         'pedal': ['이펙터', '기타이펙터', '베이스이펙터', '멀티이펙터', '페달'],
         'amp': ['기타앰프', '베이스앰프', '앰프', '콤보앰프', '앰프헤드'],
+        'mic': ['마이크', '마이크로폰', '콘덴서마이크', '다이나믹마이크', '무선마이크'],
     }
     
     # =========================================================================

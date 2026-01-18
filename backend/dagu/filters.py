@@ -312,6 +312,15 @@ def check_category_mismatch(search_category: str, title: str) -> bool:
         if _contains_keywords(title_lower, 'CATEGORY_PEDAL_KEYWORDS'):
             return False
 
+    # mic(마이크) 검색 시
+    if search_cat == 'mic':
+        # "마이크", "마이크로폰" 등이 제목에 있으면 확실히 마이크이므로 통과
+        if _contains_keywords(title_lower, 'MIC_CONFIRM_KEYWORDS'):
+            return True
+        # 그 외에는 기타/앰프/이펙터 키워드 확인
+        if _contains_keywords(title_lower, 'CATEGORY_MIC_EXCLUDE_KEYWORDS'):
+            return False
+
     return True
 
 
@@ -428,15 +437,75 @@ def clean_html_tags(text: str) -> str:
     return clean.strip()
 
 
+def calculate_min_price(category: str = None, reference_price: int = None) -> int:
+    """
+    최소 가격 계산.
+    - reference_price가 있으면: 신품가의 MIN_PRICE_RATIO (10%)
+    - 없으면: 카테고리별 기본값 사용
+    """
+    # 신품 기준가가 있으면 비율로 계산
+    if reference_price and reference_price > 0:
+        calculated = int(reference_price * CrawlerConfig.MIN_PRICE_RATIO)
+        # 최소 1만원은 보장
+        return max(calculated, 10000)
+
+    # 폴백: 카테고리별 기본값
+    if category == 'effect':
+        return CrawlerConfig.MIN_PRICE_PEDAL
+    elif category == 'mic':
+        return CrawlerConfig.MIN_PRICE_MIC
+    else:
+        return CrawlerConfig.MIN_PRICE_KRW
+
+
+def calculate_dynamic_min_price(prices: list[int], threshold_ratio: float = 0.15) -> int:
+    """
+    동적 가격 필터링 (DB에 없는 악기용).
+    가격 분포의 중간값(Median)을 구하고, 그 중간값의 threshold_ratio 이하인 상품은 제외.
+
+    Args:
+        prices: 검색 결과 가격 리스트
+        threshold_ratio: 중간값 대비 최소가 비율 (기본 15%)
+
+    Returns:
+        동적으로 계산된 최소 가격
+    """
+    if not prices or len(prices) < 5:
+        return 0  # 데이터 부족 시 필터링 안 함
+
+    sorted_prices = sorted(prices)
+    n = len(sorted_prices)
+
+    # 중간값 계산
+    if n % 2 == 0:
+        median = (sorted_prices[n // 2 - 1] + sorted_prices[n // 2]) // 2
+    else:
+        median = sorted_prices[n // 2]
+
+    # 중간값의 threshold_ratio를 최소가로 설정
+    dynamic_min = int(median * threshold_ratio)
+
+    # 최소 1만원 보장
+    dynamic_min = max(dynamic_min, 10000)
+
+    logger.info(f"[동적필터] 가격분포: {len(prices)}개, 중간값: {median:,}원 → 최소가: {dynamic_min:,}원")
+
+    return dynamic_min
+
+
 def filter_naver_item_with_reason(
     item: dict,
     query: str,
     brand: str = None,
     category: str = None,
     min_price: int = None,
+    reference_price: int = None,
 ) -> tuple[Optional[dict], str]:
     """
     네이버 쇼핑 아이템 필터링 (탈락 이유 반환).
+
+    Args:
+        reference_price: 신품 기준가 (있으면 이 값의 10%를 최소가로 사용)
 
     Returns:
         (정제된 아이템 또는 None, 탈락 이유)
@@ -451,10 +520,7 @@ def filter_naver_item_with_reason(
 
     # [필터 1] 최소 가격
     if min_price is None:
-        if category == 'effect':
-            min_price = CrawlerConfig.MIN_PRICE_PEDAL
-        else:
-            min_price = CrawlerConfig.MIN_PRICE_KRW
+        min_price = calculate_min_price(category, reference_price)
 
     if not check_min_price(lprice, min_price):
         return None, 'price'
@@ -516,10 +582,11 @@ def filter_naver_item(
     brand: str = None,
     category: str = None,
     min_price: int = None,
+    reference_price: int = None,
 ) -> Optional[dict]:
     """
     네이버 쇼핑 아이템 필터링.
     모든 필터를 통과하면 정제된 아이템 반환, 탈락하면 None 반환.
     """
-    result, _ = filter_naver_item_with_reason(item, query, brand, category, min_price)
+    result, _ = filter_naver_item_with_reason(item, query, brand, category, min_price, reference_price)
     return result

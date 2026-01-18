@@ -46,13 +46,13 @@ export default function HomePage() {
             <main className="flex-1 flex flex-col items-center justify-center px-4 py-16">
                 {/* 로고 / 타이틀 */}
                 <motion.div
-                    className="text-center mb-12"
+                    className="text-center mb-8 sm:mb-12"
                     initial={{ opacity: 0, y: -30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
                 >
                     <motion.div
-                        className="text-8xl sm:text-9xl mb-6"
+                        className="text-6xl sm:text-9xl mb-4 sm:mb-6"
                         animate={{
                             y: [0, -10, 0],
                             rotate: [0, -5, 5, 0],
@@ -66,11 +66,11 @@ export default function HomePage() {
                         🍵
                     </motion.div>
 
-                    <h1 className="text-7xl sm:text-8xl font-black mb-8 tracking-tighter text-stone-800">
+                    <h1 className="text-5xl sm:text-8xl font-black mb-4 sm:mb-8 tracking-tighter text-stone-800">
                         DAGU
                     </h1>
 
-                    <p className="text-2xl sm:text-3xl text-stone-600 max-w-2xl mx-auto leading-relaxed">
+                    <p className="text-lg sm:text-3xl text-stone-600 max-w-2xl mx-auto leading-relaxed px-4">
                         악기 시세를 한눈에 비교하고 <br className="sm:hidden" />
                         <span className="block sm:inline mt-2 sm:mt-0"><span className="text-matcha-600 font-black">다구</span>에서 <span className="font-bold text-stone-800">다구</span>해보세요</span>
                     </p>
@@ -83,29 +83,29 @@ export default function HomePage() {
 
                 {/* 인기 검색어 / 빠른 검색 */}
                 <motion.div
-                    className="mt-12 flex flex-col items-center gap-4"
+                    className="mt-8 sm:mt-12 flex flex-col items-center gap-3 sm:gap-4 px-4"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
                 >
-                    <span className="text-sm font-medium text-stone-400 uppercase tracking-widest text-[11px] mb-2">인기 매물</span>
-                    <div className="flex flex-wrap justify-center gap-2.5">
+                    <span className="text-xs sm:text-sm font-medium text-stone-400 uppercase tracking-widest mb-1 sm:mb-2">인기 매물</span>
+                    <div className="flex flex-wrap justify-center gap-2 sm:gap-2.5">
                         {popularTerms.map((term, i) => (
                             <motion.button
                                 key={`${term}-${i}`}
                                 onClick={() => handleSearch(term)}
                                 className="
-                                    pl-3 pr-5 py-2.5 text-base bg-white text-stone-600
+                                    pl-2.5 sm:pl-3 pr-4 sm:pr-5 py-2 sm:py-2.5 text-sm sm:text-base bg-white text-stone-600
                                     rounded-full shadow-sm shadow-stone-200
                                     hover:bg-matcha-50 hover:text-matcha-800 hover:shadow-md hover:-translate-y-0.5
                                     transition-all duration-300
-                                    flex items-center gap-2.5 group
+                                    flex items-center gap-2 sm:gap-2.5 group
                                 "
                                 whileHover={{ scale: 1.05, y: -2 }}
                                 whileTap={{ scale: 0.95 }}
                             >
                                 <span className={`
-                                    w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-black
+                                    w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full text-[9px] sm:text-[10px] font-black
                                     ${i < 3 ? 'bg-matcha-100 text-matcha-600' : 'bg-stone-100 text-stone-400'}
                                     group-hover:bg-white group-hover:text-matcha-600 transition-colors
                                 `}>

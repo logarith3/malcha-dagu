@@ -235,17 +235,17 @@ export default function SearchResultPage() {
                 >
                     {/* 헤더 */}
                     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-stone-200 shadow-sm">
-                        <div className="max-w-7xl mx-auto px-4 py-4">
-                            <div className="flex items-center gap-4">
+                        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-4">
+                            <div className="flex items-center gap-2 sm:gap-4">
                                 <motion.button
                                     onClick={() => navigate('/')}
-                                    className="text-2xl font-black text-matcha-600 tracking-tight"
+                                    className="text-lg sm:text-2xl font-black text-matcha-600 tracking-tight shrink-0"
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                 >
                                     DAGU
                                 </motion.button>
-                                <div className="flex-1 max-w-2xl">
+                                <div className="flex-1 min-w-0">
                                     <SearchBar
                                         onSearch={handleSearch}
                                         isLoading={isLoading}
@@ -258,17 +258,17 @@ export default function SearchResultPage() {
                     </header>
 
                     {/* 메인 Container (Grid Layout) */}
-                    <main className="max-w-7xl mx-auto px-4 py-8 grid lg:grid-cols-[1fr_280px] gap-8 items-start">
+                    <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8 grid lg:grid-cols-[1fr_280px] gap-4 sm:gap-8 items-start">
 
                         {/* Left Column: Results */}
                         <div className="min-w-0">
                             {/* Title & Count */}
-                            <div className="mb-6">
-                                <h1 className="text-3xl font-bold text-stone-800 tracking-tight">
+                            <div className="mb-4 sm:mb-6">
+                                <h1 className="text-xl sm:text-3xl font-bold text-stone-800 tracking-tight">
                                     "<span className="text-matcha-600">{query}</span>" 검색 결과
                                 </h1>
                                 {data && (
-                                    <p className="text-stone-500 mt-2 font-medium">
+                                    <p className="text-sm sm:text-base text-stone-500 mt-1 sm:mt-2 font-medium">
                                         총 {data.total_count}개의 매물을 찾았습니다
                                     </p>
                                 )}
@@ -302,7 +302,7 @@ export default function SearchResultPage() {
                             {/* 결과 리스트 */}
                             {allItems.length > 0 && (
                                 <motion.div
-                                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+                                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6"
                                     variants={{
                                         hidden: { opacity: 0 },
                                         show: {
