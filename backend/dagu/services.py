@@ -526,7 +526,33 @@ class SearchAggregatorService:
         expanded_queries = expand_query_with_aliases(query)  # 별칭 확장
         candidate_filter = models.Q()
 
-        # 정규화된 검색어로 이름/브랜드 검색
+        # [NEW] 브랜드 객체가 감지되면 해당 브랜드로 필터링 (우선순위 높음)
+        from .models import Brand
+        target_brand = None
+        
+        # 1. 쿼리 전체가 브랜드명과 일치하는지 확인
+        try:
+             target_brand = Brand.objects.get(name__iexact=brand) if brand else None
+        except Brand.DoesNotExist:
+             target_brand = None
+
+        # 2. 브랜드 매핑에서 감지된 브랜드가 있으면 DB에서 조회
+        if not target_brand and brand:
+             target_brand = Brand.objects.filter(slug__iexact=brand).first() or \
+                            Brand.objects.filter(name__icontains=brand).first()
+
+        if target_brand:
+            logger.info(f"Target Brand Detected: {target_brand.name}")
+            # 해당 브랜드의 악기들만 검색 대상에 포함
+            candidate_filter &= models.Q(brand_obj=target_brand)
+            
+            # 브랜드명을 제외한 나머지 쿼리로 모델명 검색 (옵션)
+            # 예: "Fender Strat" -> brand="Fender", query="Strat"
+            # 하지만 현재 effective_query는 전체 쿼리이므로 그대로 둠
+        
+        # 정규화된 검색어로 이름/브랜드 검색 (기존 로직 + brand_obj 추가)
+        candidate_filter |= models.Q(name__icontains=query_normalized)
+        candidate_filter |= models.Q(brand_obj__name__icontains=query_normalized) # Relation 기반 검색
         for token in query_tokens:
             candidate_filter |= models.Q(name__icontains=token)
             candidate_filter |= models.Q(brand__icontains=token)
@@ -602,6 +628,28 @@ class SearchAggregatorService:
         # 3. DB 유저 매물 검색 - 매칭된 악기에 연결된 UserItem 우선
         # =================================================================
         now = timezone.now()
+
+        # Taxonomy 정보 생성 (Brand 객체 기반)
+        taxonomy = None
+        if target_brand:
+            taxonomy = {
+                'title': target_brand.name,
+                'type': 'brand',
+                'brand': target_brand.name,
+                'breadcrumbs': ['Home', target_brand.name],
+                'description': target_brand.description or f"{target_brand.name} 브랜드의 악기 모음입니다.",
+                'logo_url': target_brand.logo_url
+            }
+        elif best_match and best_match[1] >= 0.8:
+             # 모델 매칭 (기존 로직 유지)
+             best_inst = best_match[0]
+             taxonomy = {
+                'title': f"{best_inst.brand_obj.name if best_inst.brand_obj else best_inst.brand.title()} {best_inst.name}",
+                'type': 'model',
+                'brand': best_inst.brand_obj.name if best_inst.brand_obj else best_inst.brand.title(),
+                'breadcrumbs': ['Home', best_inst.brand_obj.name if best_inst.brand_obj else 'Instrument', best_inst.name],
+                'description': f"{best_inst.brand_obj.name if best_inst.brand_obj else best_inst.brand}의 {best_inst.name} 모델입니다."
+            }
 
         if matching_instruments:  # 리스트이므로 len > 0 체크
             # 매칭된 악기들의 UserItem 가져오기
@@ -697,6 +745,7 @@ class SearchAggregatorService:
             'items': all_items,
             'naver_items': naver_items,
             'user_items': user_items,
+            'taxonomy': taxonomy,
         }
 
 

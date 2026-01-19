@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import SearchBar from '../components/SearchBar';
 import MatchaBounceLoader from '../components/MatchaBounceLoader';
 import ItemCard from '../components/ItemCard';
+import CategoryHeader from '../components/CategoryHeader';
 import { useSearch, useTrackItemClick, useCreateUserItem, useExtendUserItem, useReportItem, useUpdateItemPrice } from '../hooks/useSearch';
 import { useAuth } from '../hooks/useAuth';
 import type { NaverItem, MergedUserItem, ReportReason } from '../types';
@@ -277,13 +278,19 @@ export default function SearchResultPage() {
                         <div className="min-w-0">
                             {/* Title & Count */}
                             <div className="mb-4 sm:mb-6">
-                                <h1 className="text-xl sm:text-3xl font-bold text-stone-800 tracking-tight">
-                                    "<span className="text-matcha-600">{query}</span>" 검색 결과
-                                </h1>
-                                {data && (
-                                    <p className="text-sm sm:text-base text-stone-500 mt-1 sm:mt-2 font-medium">
-                                        총 {data.total_count}개의 매물을 찾았습니다
-                                    </p>
+                                {data?.taxonomy ? (
+                                    <CategoryHeader taxonomy={data.taxonomy} />
+                                ) : (
+                                    <>
+                                        <h1 className="text-xl sm:text-3xl font-bold text-stone-800 tracking-tight">
+                                            "<span className="text-matcha-600">{query}</span>" 검색 결과
+                                        </h1>
+                                        {data && (
+                                            <p className="text-sm sm:text-base text-stone-500 mt-1 sm:mt-2 font-medium">
+                                                총 {data.total_count}개의 매물을 찾았습니다
+                                            </p>
+                                        )}
+                                    </>
                                 )}
                             </div>
 

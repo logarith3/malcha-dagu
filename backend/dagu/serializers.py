@@ -4,7 +4,14 @@ Serializers for MALCHA-DAGU API.
 
 from rest_framework import serializers
 
-from .models import Instrument, UserItem
+from .models import Instrument, UserItem, Brand
+
+
+class BrandSerializer(serializers.ModelSerializer):
+    """브랜드 시리얼라이저"""
+    class Meta:
+        model = Brand
+        fields = ['name', 'slug', 'logo_url', 'description']
 
 
 class InstrumentSerializer(serializers.ModelSerializer):
@@ -14,11 +21,13 @@ class InstrumentSerializer(serializers.ModelSerializer):
         source='get_category_display', 
         read_only=True
     )
+    # 브랜드 상세 정보 (읽기 전용)
+    brand_detail = BrandSerializer(source='brand_obj', read_only=True)
     
     class Meta:
         model = Instrument
         fields = [
-            'id', 'name', 'brand', 'category', 'category_display',
+            'id', 'name', 'brand', 'brand_detail', 'category', 'category_display',
             'image_url', 'reference_price', 'description',
             'created_at', 'updated_at'
         ]
@@ -109,6 +118,9 @@ class SearchResultSerializer(serializers.Serializer):
 
     # 신품 정보
     reference = serializers.DictField(required=False)
+    
+    # Taxonomy 정보 (DB 기반)
+    taxonomy = serializers.DictField(required=False, allow_null=True)
     
     # 가격순 정렬된 통합 결과
     items = serializers.ListField()

@@ -17,6 +17,37 @@ def default_expiry():
     return timezone.now() + timedelta(hours=72)
 
 
+
+class Brand(models.Model):
+    """
+    브랜드 정보를 관리하는 모델.
+    URL 슬러그, 로고, 설명을 포함하여 브랜드 페이지 구성에 사용됨.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, unique=True, verbose_name='브랜드명 (정식)')
+    slug = models.SlugField(max_length=100, unique=True, verbose_name='URL 슬러그')
+    logo_url = models.URLField(max_length=2000, blank=True, verbose_name='로고 URL')
+    description = models.TextField(blank=True, verbose_name='브랜드 설명')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '브랜드'
+        verbose_name_plural = '브랜드 목록'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            # 기본 슬러그 생성 (간단한 처리)
+            from django.utils.text import slugify
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+
 class Instrument(models.Model):
     """
     악기 마스터 테이블.
@@ -36,8 +67,20 @@ class Instrument(models.Model):
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # [Refactor] 브랜드 관계형 데이터로 전환 중
+    # 기존 문자열 필드는 하위 호환성을 위해 유지하되, save()에서 자동 동기화
+    brand = models.CharField(max_length=100, verbose_name='브랜드 (Legacy)')
+    brand_obj = models.ForeignKey(
+        Brand, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='instruments',
+        verbose_name='브랜드 (Relation)'
+    )
+    
     name = models.CharField(max_length=500, verbose_name='모델명')
-    brand = models.CharField(max_length=100, verbose_name='브랜드')
     category = models.CharField(
         max_length=50, 
         choices=CATEGORY_CHOICES, 
@@ -67,11 +110,30 @@ class Instrument(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        # 브랜드/모델명 소문자 정규화 (입력 편의)
+        # 1. 문자열 정규화
         if self.brand:
             self.brand = self.brand.lower().strip()
         if self.name:
             self.name = self.name.lower().strip()
+            
+        # 2. Brand 객체 자동 연결 (없으면 생성)
+        if self.brand and not self.brand_obj:
+            from django.utils.text import slugify
+            brand_slug = slugify(self.brand)
+            
+            # Brand 찾거나 생성
+            brand_instance, created = Brand.objects.get_or_create(
+                slug=brand_slug,
+                defaults={
+                    'name': self.brand.title(), # Title Case로 저장 (예: fender -> Fender)
+                }
+            )
+            self.brand_obj = brand_instance
+            
+        # 3. 반대로 brand_obj만 있고 brand 텍스트가 비어있으면 채워줌
+        if self.brand_obj and not self.brand:
+            self.brand = self.brand_obj.slug
+
         super().save(*args, **kwargs)
 
     def __str__(self):

@@ -67,6 +67,14 @@ export interface SearchResult {
         price: number;
         image_url: string;
     } | null;
+    taxonomy: {
+        title: string;
+        type: string; // 'brand' | 'model'
+        brand: string;
+        breadcrumbs: string[];
+        description: string;
+        logo_url?: string;
+    } | null;
     items: (NaverItem | MergedUserItem)[];
     naver_items: NaverItem[];
     user_items: MergedUserItem[];

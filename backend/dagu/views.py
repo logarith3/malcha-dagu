@@ -117,8 +117,9 @@ class SearchView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        # 검색어 추적 (비동기적으로 처리해도 좋음)
-        self._track_search_query(query)
+        # 검색어 추적 (서비스에서 정규화된 쿼리 사용)
+        effective_query = result.get('query', query)
+        self._track_search_query(effective_query)
 
         serializer = SearchResultSerializer(result)
         response_data = serializer.data
