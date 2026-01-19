@@ -3,6 +3,11 @@ import os
 import django
 from django.utils.text import slugify
 
+import sys
+
+# Add the current directory (backend) to sys.path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 # Use local settings for script execution
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
 django.setup()
