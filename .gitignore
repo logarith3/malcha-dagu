@@ -1,5 +1,35 @@
-backend/config/settings/.env
+# General
+.DS_Store
+Thumbs.db
+*.log
 
-backend\config\settings\local.py
-backend/.env
+# Environment Variables
 .env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+env/
+venv/
+.venv/
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+db.sqlite3
+media/
+staticfiles/
+
+# Node.js / React
+node_modules/
+dist/
+build/
+.npm/
+
+# IDE
+.vscode/
+.idea/
+
+# Local Settings
+backend/config/settings/local.py
