@@ -88,12 +88,17 @@ class JWTCookieAuthentication(JWTAuthentication):
                 self._record_auth_failure(client_ip, "user_creation_failed")
                 return None
 
-        except TokenError as e:
+        except (TokenError, InvalidToken) as e:
+            # 토큰이 유효하지 않으면 익명 사용자로 처리 (AllowAny 엔드포인트 허용)
             self._record_auth_failure(client_ip, f"token_error: {e}")
             logger.warning(f"SSO token validation failed: {e} (ip={client_ip})")
             return None
-        except AuthenticationFailed:
-            raise  # Rate limit 에러는 그대로 전달
+        except AuthenticationFailed as e:
+            # Rate limit 에러만 re-raise, 그 외는 None 반환
+            if 'Too many' in str(e):
+                raise
+            logger.warning(f"SSO auth failed: {e} (ip={client_ip})")
+            return None
         except Exception as e:
             self._record_auth_failure(client_ip, f"unexpected_error: {e}")
             logger.error(f"SSO authentication error: {e} (ip={client_ip})")

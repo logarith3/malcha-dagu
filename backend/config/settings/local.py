@@ -26,6 +26,9 @@ CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 # JWT Cookie (개발용 보안 완화)
 SIMPLE_JWT['AUTH_COOKIE_SECURE'] = False
 SIMPLE_JWT['AUTH_COOKIE_DOMAIN'] = None
+# 로컬 개발: ISSUER/AUDIENCE 검증 비활성화 (말차 로컬과 호환)
+SIMPLE_JWT['ISSUER'] = None
+SIMPLE_JWT['AUDIENCE'] = None
 
 # Browsable API 활성화 (개발할 때 편함)
 if 'rest_framework' in INSTALLED_APPS:

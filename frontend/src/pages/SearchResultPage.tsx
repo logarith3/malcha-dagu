@@ -52,6 +52,19 @@ function detectSource(url: string): string {
 
 const MIN_LOADING_TIME = 3400;
 
+// 로그인 URL 생성 (로컬/프로덕션 환경 감지)
+const getLoginUrl = () => {
+    const currentUrl = window.location.href;
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+    if (isLocalhost) {
+        // 로컬 개발: 말차 프론트엔드 로그인 페이지 (현재 페이지로 돌아오기)
+        return `http://localhost:5173/login?redirect_uri=${encodeURIComponent(currentUrl)}`;
+    }
+    // 프로덕션: 말차 프로덕션 로그인
+    return `https://malchalab.com/login?redirect_uri=${encodeURIComponent(currentUrl)}`;
+};
+
 export default function SearchResultPage() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -351,7 +364,7 @@ export default function SearchResultPage() {
                                 <button
                                     onClick={() => {
                                         if (!isLoggedIn) {
-                                            window.location.href = 'https://malchalab.com/login?redirect_uri=https://dagu.malchalab.com';
+                                            window.location.href = getLoginUrl();
                                             return;
                                         }
                                         setShowRegisterModal(true);
@@ -377,7 +390,7 @@ export default function SearchResultPage() {
                     <motion.button
                         onClick={() => {
                             if (!isLoggedIn) {
-                                window.location.href = 'https://malchalab.com/login?redirect_uri=https://dagu.malchalab.com';
+                                window.location.href = getLoginUrl();
                                 return;
                             }
                             setShowRegisterModal(true);
