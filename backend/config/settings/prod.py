@@ -8,10 +8,10 @@ DEBUG = False
 # 1. Host & Database
 # =============================================================================
 ALLOWED_HOSTS = [
+    'dagu.malchalab.com',                   # 새로운 서브도메인 추가
     'malcha-dagu-7939098a2a2e.herokuapp.com',
-    '.herokuapp.com',
+    '.malchalab.com',                       # malchalab.com의 모든 서브도메인 허용
 ]
-
 # Heroku Postgres 연결
 DATABASES = {
     'default': dj_database_url.config(conn_max_age=600, ssl_require=True)

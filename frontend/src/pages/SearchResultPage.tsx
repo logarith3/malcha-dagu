@@ -351,7 +351,7 @@ export default function SearchResultPage() {
                                 <button
                                     onClick={() => {
                                         if (!isLoggedIn) {
-                                            window.location.href = 'https://malchalab.com/login';
+                                            window.location.href = 'https://malchalab.com/login?redirect_uri=https://dagu.malchalab.com';
                                             return;
                                         }
                                         setShowRegisterModal(true);
@@ -377,7 +377,7 @@ export default function SearchResultPage() {
                     <motion.button
                         onClick={() => {
                             if (!isLoggedIn) {
-                                window.location.href = 'https://malchalab.com/login';
+                                window.location.href = 'https://malchalab.com/login?redirect_uri=https://dagu.malchalab.com';
                                 return;
                             }
                             setShowRegisterModal(true);
