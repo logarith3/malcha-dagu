@@ -519,8 +519,6 @@ def filter_naver_item_with_reason(
         return None, 'price'
 
     # [필터 1] 최소 가격
-    if min_price is None:
-        min_price = calculate_min_price(category, reference_price)
 
     if not check_min_price(lprice, min_price):
         return None, 'price'
