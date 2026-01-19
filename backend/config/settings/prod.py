@@ -57,7 +57,11 @@ X_FRAME_OPTIONS = 'DENY'
 
 # [주의] '.malchalab.com'으로 고정하면 헤로쿠 주소에서 로그인이 안 됩니다.
 # 헤로쿠 테스트 중에는 주석 처리하여 현재 도메인(herokuapp.com)을 따르게 합니다.
-# COOKIE_DOMAIN = '.malchalab.com'  <-- 나중에 실제 도메인 연결하면 주석 해제하세요.
+COOKIE_DOMAIN = '.malchalab.com'  
+
+SESSION_COOKIE_DOMAIN = COOKIE_DOMAIN
+CSRF_COOKIE_DOMAIN = COOKIE_DOMAIN
+SIMPLE_JWT['AUTH_COOKIE_DOMAIN'] = COOKIE_DOMAIN
 
 # SIMPLE_JWT 설정 업데이트
 # SIMPLE_JWT['AUTH_COOKIE_DOMAIN'] = COOKIE_DOMAIN <-- 주석 처리
