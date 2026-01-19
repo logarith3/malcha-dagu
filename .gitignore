@@ -1,3 +1,5 @@
 backend/config/settings/.env
 
 backend\config\settings\local.py
+backend/.env
+.env
