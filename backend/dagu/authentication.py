@@ -127,12 +127,25 @@ class JWTCookieAuthentication(JWTAuthentication):
     def _validate_token_claims(self, validated_token):
         """
         추가 토큰 클레임 검증.
-        SimpleJWT가 iss/aud는 자동 검증하므로 여기서는 추가 검증만 수행.
+        - token_type, user_id 검증
+        - audience 수동 검증 (SimpleJWT 배열 처리 이슈 우회)
         """
         # token_type 검증 (access 토큰만 허용)
         token_type = validated_token.get('token_type')
         if token_type != 'access':
             raise TokenError(f"Invalid token type: {token_type}")
+
+        # audience 수동 검증 (SimpleJWT가 배열 처리 못함)
+        aud = validated_token.get('aud')
+        allowed_audiences = ['malchalab.com', 'dagu.malchalab.com']
+        if aud:
+            # aud가 배열이면 교집합 확인, 문자열이면 포함 여부 확인
+            if isinstance(aud, list):
+                if not any(a in allowed_audiences for a in aud):
+                    raise TokenError(f"Invalid audience: {aud}")
+            elif aud not in allowed_audiences:
+                raise TokenError(f"Invalid audience: {aud}")
+            logger.debug(f"Audience validated: {aud}")
 
         # user_id 존재 여부 확인
         user_id = validated_token.get('user_id')

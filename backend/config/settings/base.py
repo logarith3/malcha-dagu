@@ -124,7 +124,9 @@ SIMPLE_JWT = {
     "AUTH_COOKIE_HTTP_ONLY": True,
     "AUTH_COOKIE_SAMESITE": "Lax",
     "ISSUER": "malchalab.com",
-    "AUDIENCE": ["malchalab.com", "dagu.malchalab.com"],  # SSO: 말차 토큰과 일치해야 함
+    # AUDIENCE 자동 검증 비활성화 (authentication.py에서 수동 검증)
+    # SimpleJWT가 배열 audience 처리를 제대로 못함
+    # "AUDIENCE": ["malchalab.com", "dagu.malchalab.com"],
     "JTI_CLAIM": "jti",
     "TOKEN_TYPE_CLAIM": "token_type",
     "USER_ID_CLAIM": "user_id",
