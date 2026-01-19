@@ -124,7 +124,7 @@ SIMPLE_JWT = {
     "AUTH_COOKIE_HTTP_ONLY": True,
     "AUTH_COOKIE_SAMESITE": "Lax",
     "ISSUER": "malchalab.com",
-    "AUDIENCE": "dagu.malchalab.com",
+    "AUDIENCE": ["malchalab.com", "dagu.malchalab.com"],  # SSO: 말차 토큰과 일치해야 함
     "JTI_CLAIM": "jti",
     "TOKEN_TYPE_CLAIM": "token_type",
     "USER_ID_CLAIM": "user_id",

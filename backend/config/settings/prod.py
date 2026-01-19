@@ -51,16 +51,17 @@ CSRF_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = 'DENY'
 
 
+
 # =============================================================================
 # 4. Domain & CORS (Heroku 테스트용 수정)
 # =============================================================================
 
 # [주의] '.malchalab.com'으로 고정하면 헤로쿠 주소에서 로그인이 안 됩니다.
 # 헤로쿠 테스트 중에는 주석 처리하여 현재 도메인(herokuapp.com)을 따르게 합니다.
-COOKIE_DOMAIN = '.malchalab.com'  
+COOKIE_DOMAIN = '.malchalab.com'
 
-SESSION_COOKIE_DOMAIN = COOKIE_DOMAIN
-CSRF_COOKIE_DOMAIN = COOKIE_DOMAIN
+SESSION_COOKIE_DOMAIN = '.malchalab.com'  # 앞에 점(.) 필수!
+CSRF_COOKIE_DOMAIN = '.malchalab.com'
 SIMPLE_JWT['AUTH_COOKIE_DOMAIN'] = COOKIE_DOMAIN
 
 # SIMPLE_JWT 설정 업데이트
