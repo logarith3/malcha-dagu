@@ -112,12 +112,6 @@ export default function ItemCard({
     // 이미지 URL
     const imageUrl = 'image' in item ? item.image : '';
 
-    const handleClick = () => {
-        // noopener만 사용 (noreferrer 제거) - 네이버가 Referer 헤더를 확인하므로 정상 유입으로 인식됨
-        window.open(item.link, '_blank', 'noopener');
-        onClick?.();
-    };
-
     const handleExtend = (e: React.MouseEvent) => {
         e.stopPropagation();
         onExtend?.();
@@ -163,16 +157,31 @@ export default function ItemCard({
                 exit={{ opacity: 0, y: -20 }}
                 whileHover={{ scale: 1.02, y: -4 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={handleClick}
+                onClick={() => { }} // Remove handler, use Link overlay
                 className="
                     relative flex flex-col p-0 bg-white rounded-2xl sm:rounded-[32px]
-                    cursor-pointer transition-all duration-300
+                    transition-all duration-300
                     hover:-translate-y-2
                     shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)]
                     hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.12)]
                     group h-full
                 "
             >
+                {/* 
+                  [SEO & Security] 
+                  직접적인 <a> 태그 사용 (네이버 보안 정책/모바일 이슈 해결)
+                  referrerPolicy="no-referrer-when-downgrade" 추가
+                */}
+                <a
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="absolute inset-0 z-10 rounded-2xl sm:rounded-[32px]"
+                    aria-label="상품 페이지로 이동"
+                    onClick={onClick}
+                />
+
                 {/* 이미지 (Top Half Cover) */}
                 <div className="w-full h-36 sm:h-56 relative overflow-hidden bg-stone-50 rounded-t-2xl sm:rounded-t-[32px]">
                     {imageUrl ? (
@@ -258,8 +267,8 @@ export default function ItemCard({
                             )}
                         </div>
 
-                        {/* 버튼들 */}
-                        <div className="flex items-center gap-2">
+                        {/* 버튼들 - z-20으로 링크 위에 배치 */}
+                        <div className="relative z-20 flex items-center gap-2">
                             {/* 연장 버튼 (본인 매물만) */}
                             {isOwner && (
                                 <button
