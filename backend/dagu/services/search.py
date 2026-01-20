@@ -312,6 +312,16 @@ class SearchAggregatorService:
         if matching_instruments:
             q_filter |= models.Q(instrument__in=matching_instruments)
 
+        # 검색어 토큰화로 더 유연한 검색 (예: "boss ds-1" → "boss" AND "ds-1")
+        query_tokens = tokenize_query(query)
+        if len(query_tokens) >= 2:
+            # 모든 토큰이 title 또는 instrument 필드에 포함된 경우도 매칭
+            for token in query_tokens:
+                if len(token) >= 2:  # 너무 짧은 토큰 제외
+                    q_filter |= models.Q(title__icontains=token)
+                    q_filter |= models.Q(instrument__name__icontains=token)
+                    q_filter |= models.Q(instrument__brand__icontains=token)
+
         logger.info(f"UserItem search filter: {q_filter}")
 
         user_items_qs = UserItem.objects.filter(

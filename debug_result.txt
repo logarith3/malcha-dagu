@@ -1,0 +1,23 @@
+Query: ds-1
+Matching Instruments count: 2
+  Inst: b7029484-c661-4adc-9524-f66e056ee48e | boss | ds-1
+  Inst: ce83c306-b780-4d74-8e35-3646f246454d | boss | ds-1w
+
+Latest 5 UserItems:
+  Item: 5e293855-d312-4bba-8640-a3d85518f3de | Title: BOSS DS-1
+    Linked Inst: b7029484-c661-4adc-9524-f66e056ee48e | boss | ds-1
+    -> MATCHES matching_instrument!
+  Item: 9ff69d28-700f-42a5-ac46-6a1b6d9c1aa8 | Title: BOSS DS-1
+    Linked Inst: b7029484-c661-4adc-9524-f66e056ee48e | boss | ds-1
+    -> MATCHES matching_instrument!
+  Item: 0ecf7a72-0dab-432a-a9fa-1af6888b7807 | Title: BOSS DS-1
+    Linked Inst: b7029484-c661-4adc-9524-f66e056ee48e | boss | ds-1
+    -> MATCHES matching_instrument!
+  Item: 09faa2aa-6098-46a2-be1d-fa93dd9461eb | Title: BOSS DS-1
+    Linked Inst: b7029484-c661-4adc-9524-f66e056ee48e | boss | ds-1
+    -> MATCHES matching_instrument!
+  Item: 1fa3e76c-e812-43e2-8265-eb758e5f290a | Title: Ibanez RG
+    Linked Inst: 01a372a3-ccee-4cdc-b863-374a7b2a47a6 | ibanez | ibanez rg
+    -> DOES NOT match matching_instrument ID.
+
+UserItem filter count: 4
