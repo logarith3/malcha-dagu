@@ -66,13 +66,15 @@ class SearchView(APIView):
 
     GET /api/search/?q={검색어}&display={개수}
 
-    캐싱: 동일 검색어는 3분간 캐시 (네이버 API 호출 최소화)
+    캐싱 전략:
+    - 네이버 API 결과만 캐싱 (3분)
+    - 유저 매물은 항상 실시간 DB 조회 (즉시 반영)
     """
     permission_classes = [AllowAny]  # 인증 없이 검색 가능
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'search'
 
-    CACHE_TTL = 60 * 3  # 3분
+    CACHE_TTL = 60 * 3  # 3분 (네이버 결과만 캐싱)
 
     def get(self, request):
         query = request.query_params.get('q', '').strip()
@@ -97,19 +99,10 @@ class SearchView(APIView):
             display = 20
         display = min(max(display, 1), 100)  # 1~100 범위 제한
 
-        # 캐시 키 생성 (소문자 정규화)
-        cache_key = f"search:{query.lower()}:{display}"
-
-        # 캐시 확인
-        cached_result = cache.get(cache_key)
-        if cached_result:
-            logger.debug(f"[Cache HIT] {cache_key}")
-            return Response(cached_result)
-
-        # 통합 검색 수행
+        # 통합 검색 수행 (네이버는 캐싱, 유저 매물은 실시간)
         try:
             service = SearchAggregatorService()
-            result = service.search(query, display)
+            result = service.search_with_cache(query, display, cache, self.CACHE_TTL)
         except Exception as e:
             logger.exception(f"Search error for query '{query}': {e}")
             return Response(
@@ -123,10 +116,6 @@ class SearchView(APIView):
 
         serializer = SearchResultSerializer(result)
         response_data = serializer.data
-
-        # 캐시 저장
-        cache.set(cache_key, response_data, self.CACHE_TTL)
-        logger.debug(f"[Cache SET] {cache_key} (TTL: {self.CACHE_TTL}s)")
 
         return Response(response_data)
 
@@ -349,6 +338,7 @@ class UserItemViewSet(viewsets.ModelViewSet):
         logger.debug(f"UserItemViewSet.create called with data: {request.data}")
         response = super().create(request, *args, **kwargs)
         logger.debug(f"create success, response: {response.data}")
+        # 캐시 무효화 불필요: 유저 매물은 항상 실시간 DB 조회됨
         return response
 
     # 허용된 중고거래 사이트 도메인

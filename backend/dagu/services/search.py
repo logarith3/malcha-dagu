@@ -129,6 +129,92 @@ class SearchAggregatorService:
             'user_items': user_items,
         }
 
+    def search_with_cache(self, query: str, display: int, cache, cache_ttl: int) -> dict[str, Any]:
+        """
+        네이버 결과만 캐싱하고 유저 매물은 실시간 조회하는 검색.
+        
+        Args:
+            query: 검색어
+            display: 결과 개수
+            cache: Django cache instance
+            cache_ttl: 캐시 TTL (초)
+        
+        Returns:
+            search() 메서드와 동일한 형식
+        """
+        # 브랜드/카테고리 추출
+        brand = extract_brand(query)
+        category = self._detect_category(query)
+
+        # Step 1: DB에서 매칭 악기 찾기
+        matching_instruments, best_match = self._find_matching_instruments(query)
+        
+        # Step 2: 네이버 검색용 쿼리 생성
+        search_query, brand, category = self._build_search_query(
+            query, best_match, brand, category
+        )
+        logger.error(f"쿼리는='{best_match[0] if best_match else query}', brand={brand}, category={category}")
+        
+        # 신품 기준가
+        reference_price = best_match[0].reference_price if best_match else None
+        
+        # Step 3: 네이버 결과 조회 (캐싱 적용)
+        naver_cache_key = f"naver:{search_query.lower()}:{display}:{brand or ''}:{category or ''}"
+        naver_items = cache.get(naver_cache_key)
+        
+        if naver_items is None:
+            # 캐시 미스: 네이버 API 호출
+            naver_items = self.naver_service.search(
+                query=search_query,
+                display=display,
+                brand=brand,
+                category=category,
+                reference_price=reference_price,
+            )
+            cache.set(naver_cache_key, naver_items, cache_ttl)
+            logger.debug(f"[Naver Cache SET] {naver_cache_key} (TTL: {cache_ttl}s)")
+        else:
+            logger.debug(f"[Naver Cache HIT] {naver_cache_key}")
+
+        # Step 4: 유저 매물 실시간 조회 (캐싱 없음)
+        user_items, reference_info = self._search_user_items(
+            query, matching_instruments, best_match, display, category
+        )
+
+        # Step 5: 가격순 + 연장 우선순위 병합
+        all_items = naver_items + user_items
+        all_items.sort(key=lambda x: (
+            x.get('lprice', 0),
+            0 if x.get('extended_at') else 1
+        ))
+
+        logger.info(
+            f"검색 완료: 네이버({len(naver_items)}) + "
+            f"유저({len(user_items)}) = 총({len(all_items)})"
+        )
+
+        # 매칭된 악기 정보 (매물 등록용)
+        matched_instrument = None
+        if best_match:
+            inst = best_match[0]
+            matched_instrument = {
+                'id': str(inst.id),
+                'name': inst.name,
+                'brand': inst.brand,
+                'category': inst.category,
+            }
+
+        return {
+            'query': query,
+            'search_query': search_query,
+            'total_count': len(all_items),
+            'reference': reference_info,
+            'matched_instrument': matched_instrument,
+            'items': all_items,
+            'naver_items': naver_items,
+            'user_items': user_items,
+        }
+
     def _detect_category(self, query: str) -> str | None:
         """
         검색어에서 카테고리 추론.
