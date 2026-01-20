@@ -3,6 +3,7 @@
  */
 
 import axios from 'axios';
+import Cookies from 'js-cookie';
 import type { SearchResult, Instrument, UserItem, AIDescription } from '../types';
 
 const api = axios.create({
@@ -11,6 +12,19 @@ const api = axios.create({
         'Content-Type': 'application/json',
     },
     withCredentials: true,  // SSO 쿠키 전송 필수
+    xsrfCookieName: 'csrftoken',  // Django default CSRF 쿠키명
+    xsrfHeaderName: 'X-CSRFToken',  // Django default CSRF 헤더명
+});
+
+// CSRF 토큰 자동 전송 (Axios 기본 설정으로도 동작하지만 명시적으로 추가)
+api.interceptors.request.use((config) => {
+    const csrfToken = Cookies.get('csrftoken');
+    if (csrfToken && config.headers) {
+        config.headers['X-CSRFToken'] = csrfToken;
+    }
+    return config;
+}, (error) => {
+    return Promise.reject(error);
 });
 
 // =============================================================================

@@ -45,6 +45,19 @@ function calculateDiscount(price: number, referencePrice: number): number {
     return Math.round((1 - price / referencePrice) * 100);
 }
 
+function isValidUrl(url: string): boolean {
+    /**
+     * URL 프로토콜 검증 (XSS 방지)
+     * javascript:, data:, vbscript: 등 위험한 프로토콜 차단
+     */
+    try {
+        const parsed = new URL(url);
+        return ['http:', 'https:'].includes(parsed.protocol);
+    } catch {
+        return false;
+    }
+}
+
 // 기타 피크 순위 아이콘
 function PickIcon({ rank }: { rank: number }) {
     const colors = {
@@ -171,16 +184,24 @@ export default function ItemCard({
                   [SEO & Security] 
                   직접적인 <a> 태그 사용 (네이버 보안 정책/모바일 이슈 해결)
                   referrerPolicy="no-referrer-when-downgrade" 추가
+                  XSS 방지: http/https 프로토콜만 허용
                 */}
-                <a
-                    href={item.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    className="absolute inset-0 z-10 rounded-2xl sm:rounded-[32px]"
-                    aria-label="상품 페이지로 이동"
-                    onClick={onClick}
-                />
+                {isValidUrl(item.link) ? (
+                    <a
+                        href={item.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        className="absolute inset-0 z-10 rounded-2xl sm:rounded-[32px]"
+                        aria-label="상품 페이지로 이동"
+                        onClick={onClick}
+                    />
+                ) : (
+                    <div
+                        className="absolute inset-0 z-10 rounded-2xl sm:rounded-[32px] cursor-not-allowed"
+                        title="잘못된 링크입니다"
+                    />
+                )}
 
                 {/* 이미지 (Top Half Cover) */}
                 <div className="w-full h-36 sm:h-56 relative overflow-hidden bg-stone-50 rounded-t-2xl sm:rounded-t-[32px]">

@@ -12,12 +12,13 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view
-from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.throttling import ScopedRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
 from .models import Instrument, ItemClick, ItemReport, SearchQuery, UserItem
+from .permissions import IsOwnerOrReadOnly
 from .serializers import (
     AIDescriptionRequestSerializer,
     AIDescriptionResponseSerializer,
@@ -270,26 +271,37 @@ class InstrumentViewSet(viewsets.ModelViewSet):
 # UserItem ViewSet (CRUD + Click Tracking)
 # =============================================================================
 
+class CreateItemThrottle(UserRateThrottle):
+    """매물 등록 스팸 방지 (분당 3회)"""
+    rate = '3/min'
+
+
 class UserItemViewSet(viewsets.ModelViewSet):
     """
     유저 매물 CRUD API.
 
     GET    /api/items/              - 목록 (모두 허용)
-    POST   /api/items/              - 생성 (로그인 필수)
+    POST   /api/items/              - 생성 (로그인 필수, Rate Limit: 3/min)
     GET    /api/items/{id}/         - 상세 (모두 허용)
-    PUT    /api/items/{id}/         - 수정 (로그인 필수)
-    DELETE /api/items/{id}/         - 삭제 (로그인 필수)
+    PUT    /api/items/{id}/         - 수정 (본인만, IDOR 방지)
+    DELETE /api/items/{id}/         - 삭제 (본인만, IDOR 방지)
     POST   /api/items/{id}/click/   - 클릭 추적 (모두 허용)
     """
 
     queryset = UserItem.objects.filter(is_active=True, is_under_review=False)
+    permission_classes = [IsOwnerOrReadOnly]
 
     def get_permissions(self):
         """액션별 권한 분기"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            from rest_framework.permissions import IsAuthenticated
-            return [IsAuthenticated()]
+            return [IsAuthenticated(), IsOwnerOrReadOnly()]
         return [AllowAny()]
+    
+    def get_throttles(self):
+        """액션별 Throttle 분기"""
+        if self.action == 'create':
+            return [CreateItemThrottle()]
+        return super().get_throttles()
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -353,13 +365,21 @@ class UserItemViewSet(viewsets.ModelViewSet):
     ]
 
     def _is_allowed_link(self, link: str) -> bool:
-        """허용된 도메인인지 확인"""
+        """허용된 도메인 및 프로토콜 확인 (XSS/Open Redirect 방지)"""
         from urllib.parse import urlparse
         try:
             parsed = urlparse(link.lower())
+            # 프로토콜 검증: http/https만 허용 (javascript:, data: 등 차단)
+            if parsed.scheme not in ['http', 'https']:
+                logger.warning(f"Invalid protocol detected: {parsed.scheme}")
+                return False
+            # 도메인 검증
             domain = parsed.netloc
+            if not domain:  # 도메인이 없으면 거부
+                return False
             return any(allowed in domain for allowed in self.ALLOWED_DOMAINS)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"URL parsing error: {e}")
             return False
 
     def perform_create(self, serializer):
