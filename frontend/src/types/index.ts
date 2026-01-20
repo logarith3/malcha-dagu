@@ -75,6 +75,12 @@ export interface SearchResult {
         description: string;
         logo_url?: string;
     } | null;
+    matched_instrument: {
+        id: string;
+        name: string;
+        brand: string;
+        category: string;
+    } | null;
     items: (NaverItem | MergedUserItem)[];
     naver_items: NaverItem[];
     user_items: MergedUserItem[];

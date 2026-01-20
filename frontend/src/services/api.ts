@@ -70,7 +70,7 @@ export async function createUserItem(data: {
     source: string;
     title?: string;
 }): Promise<UserItem> {
-    // instrument가 없거나 빈 문자열이면 제거
+    // instrument가 있으면 그대로 전송, 없으면 제거 (백엔드 매칭 유도)
     const payload = { ...data };
     if (!payload.instrument) {
         delete payload.instrument;

@@ -75,7 +75,7 @@ class SearchAggregatorService:
         search_query, brand, category = self._build_search_query(
             query, best_match, brand, category
         )
-        logger.error(f"쿼리는='{search_query}', brand={brand}, category={category}")
+        logger.error(f"쿼리는='{best_match[0]}', brand={brand}, category={category}")
         # 신품 기준가 가져오기 (가격 필터링용)
         reference_price = None
         if best_match:
@@ -107,11 +107,23 @@ class SearchAggregatorService:
             f"유저({len(user_items)}) = 총({len(all_items)})"
         )
 
+        # 매칭된 악기 정보 (매물 등록용)
+        matched_instrument = None
+        if best_match:
+            inst = best_match[0]
+            matched_instrument = {
+                'id': str(inst.id),
+                'name': inst.name,
+                'brand': inst.brand,
+                'category': inst.category,
+            }
+
         return {
             'query': query,
             'search_query': search_query,  # 정규화된 검색어 (외부 링크용)
             'total_count': len(all_items),
             'reference': reference_info,
+            'matched_instrument': matched_instrument,  # 매물 등록용 악기 정보
             'items': all_items,
             'naver_items': naver_items,
             'user_items': user_items,

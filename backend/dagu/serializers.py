@@ -85,7 +85,7 @@ class UserItemCreateSerializer(serializers.ModelSerializer):
         model = UserItem
         fields = ['instrument', 'price', 'link', 'source', 'title']
         extra_kwargs = {
-            'instrument': {'required': False, 'allow_null': True}
+            'instrument': {'required': False, 'allow_null': True}  # 백엔드에서 자동 매칭
         }
 
 
@@ -121,6 +121,9 @@ class SearchResultSerializer(serializers.Serializer):
     
     # Taxonomy 정보 (DB 기반)
     taxonomy = serializers.DictField(required=False, allow_null=True)
+    
+    # 매칭된 악기 정보 (매물 등록용)
+    matched_instrument = serializers.DictField(required=False, allow_null=True)
     
     # 가격순 정렬된 통합 결과
     items = serializers.ListField()

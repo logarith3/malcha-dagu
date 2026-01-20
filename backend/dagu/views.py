@@ -374,21 +374,19 @@ class UserItemViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """
-        매물 생성 시 악기 정보를 자동으로 연결합니다.
-        - 허용된 사이트만 등록 가능
-        - 트랜잭션으로 원자성 보장
-        - 링크 중복 체크
-        - 브랜드/카테고리 자동 추출
-        - 브랜드를 이름에서 분리 (BOSS DS-1 → brand: BOSS, name: DS-1)
+        매물 생성 시 악기 정보를 연결합니다.
+        1. instrument ID가 있으면 바로 사용 (검색 결과의 matched_instrument)
+        2. 없으면 title로 자동 매칭
         """
-        import re
         from rest_framework.exceptions import ValidationError
-        from .services.utils import extract_brand, detect_category
+        from .services.utils import (
+            normalize_brand, tokenize_query, expand_query_with_aliases,
+            find_best_matching_instruments
+        )
 
-        title = serializer.validated_data.get('title', '').strip()
         link = serializer.validated_data.get('link', '').strip()
-        brand = (extract_brand(title) or 'Unknown').upper()
-        category = detect_category(title)
+        instrument_id = serializer.validated_data.get('instrument')
+        title = serializer.validated_data.get('title', '').strip()
 
         # 허용된 사이트 검증
         if not self._is_allowed_link(link):
@@ -396,47 +394,58 @@ class UserItemViewSet(viewsets.ModelViewSet):
                 'link': '허용되지 않은 사이트입니다. (뮬, 번개장터, 당근마켓, 중고나라만 가능)'
             })
 
-        # 브랜드를 이름에서 제거 (BOSS DS-1 → DS-1)
-        if brand != 'UNKNOWN':
-            # 대소문자 무시하고 브랜드 제거
-            name = re.sub(rf'^{re.escape(brand)}\s*', '', title, flags=re.IGNORECASE).strip()
-            if not name:  # 브랜드만 있는 경우 원본 유지
-                name = title
-        else:
-            name = title
-
         # 링크 중복 체크 (활성 매물 중)
         if UserItem.objects.filter(link=link, is_active=True).exists():
             raise ValidationError({'link': '이미 등록된 매물입니다.'})
 
-        with transaction.atomic():
-            # select_for_update로 race condition 방지
-            instrument = Instrument.objects.select_for_update().filter(
-                name__iexact=name,
-                brand__iexact=brand
-            ).first()
+        # 악기 결정
+        instrument = None
 
-            if not instrument:
-                # Unknown 브랜드 악기 업데이트 또는 새로 생성
-                instrument = Instrument.objects.select_for_update().filter(
-                    name__iexact=name
-                ).first()
+        # 1. instrument ID가 전달되면 바로 사용
+        if instrument_id:
+            instrument = Instrument.objects.filter(id=instrument_id).first()
+            if instrument:
+                logger.info(f"[매물 등록] instrument ID 사용: {instrument}")
 
-                if instrument and instrument.brand == 'Unknown' and brand != 'UNKNOWN':
-                    instrument.brand = brand
-                    if instrument.category == 'other':
-                        instrument.category = category
-                    instrument.save(update_fields=['brand', 'category'])
-                elif not instrument:
-                    instrument = Instrument.objects.create(
-                        name=name,
-                        brand=brand,
-                        category=category
+        # 2. ID가 없으면 title로 자동 매칭
+        if not instrument and title:
+            search_query = normalize_brand(title)
+            query_tokens = tokenize_query(search_query)
+            expanded_queries = expand_query_with_aliases(search_query)
+
+            candidate_filter = models.Q()
+            for token in query_tokens:
+                if len(token) >= 2:
+                    candidate_filter |= models.Q(name__icontains=token)
+                    candidate_filter |= models.Q(brand__icontains=token)
+            for expanded in expanded_queries:
+                candidate_filter |= models.Q(name__icontains=expanded)
+
+            candidates = Instrument.objects.filter(candidate_filter).exclude(
+                brand__iexact='unknown'
+            )[:30]
+
+            if candidates.exists():
+                scored_matches = find_best_matching_instruments(
+                    query=title,
+                    instruments_qs=candidates,
+                    min_score=0.4,
+                )
+                if scored_matches:
+                    instrument = scored_matches[0][0]
+                    logger.info(
+                        f"[매물 등록] title 매칭: '{title}' -> "
+                        f"'{instrument.brand} {instrument.name}' (score={scored_matches[0][1]:.2f})"
                     )
 
-            # owner_id 저장 (JWT user_id)
-            owner_id = self.request.user.id if self.request.user.is_authenticated else None
-            serializer.save(instrument=instrument, owner_id=owner_id)
+        if not instrument:
+            raise ValidationError({
+                'title': '해당하는 악기를 찾을 수 없습니다. 검색 결과 페이지에서 등록해주세요.'
+            })
+
+        # owner_id 저장 (JWT user_id)
+        owner_id = self.request.user.id if self.request.user.is_authenticated else None
+        serializer.save(instrument=instrument, owner_id=owner_id)
 
     @action(detail=True, methods=['post'])
     def extend(self, request, pk=None):

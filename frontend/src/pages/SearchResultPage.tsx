@@ -430,6 +430,7 @@ export default function SearchResultPage() {
                 {showRegisterModal && (
                     <RegisterModal
                         query={query}
+                        matchedInstrument={data?.matched_instrument}
                         onClose={() => setShowRegisterModal(false)}
                     />
                 )}
@@ -496,8 +497,18 @@ const ExternalSearchButtons = ({ query, vertical }: { query: string, vertical: b
     </div>
 );
 
+interface RegisterModalProps {
+    query: string;
+    matchedInstrument?: {
+        id: string;
+        name: string;
+        brand: string;
+    } | null;
+    onClose: () => void;
+}
+
 // 매물 등록 모달
-function RegisterModal({ query, onClose }: { query: string; onClose: () => void }) {
+function RegisterModal({ query, matchedInstrument, onClose }: RegisterModalProps) {
     const [price, setPrice] = useState('');
     const [link, setLink] = useState('');
     const [detectedSource, setDetectedSource] = useState('other');
@@ -524,6 +535,7 @@ function RegisterModal({ query, onClose }: { query: string; onClose: () => void 
         const finalSource = detectSource(finalLink);
 
         createUserItem.mutate({
+            instrument: matchedInstrument?.id,
             title: query,
             price: Number(price),
             link: finalLink,
@@ -598,10 +610,8 @@ function RegisterModal({ query, onClose }: { query: string; onClose: () => void 
                 </div>
 
                 {/* 악기명 표시 (자동) */}
-                <div className="mb-4 p-3 bg-matcha-50 rounded-xl border border-matcha-100">
-                    <p className="text-xs text-matcha-600 font-medium mb-1">악기명</p>
-                    <p className="text-lg font-bold text-matcha-800">{query}</p>
-                </div>
+
+
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* 가격 */}
