@@ -26,10 +26,23 @@ export function useAuth(): AuthState {
 
     useEffect(() => {
         const checkAuth = async () => {
+            // 로컬 개발 환경용 예외 처리
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.log('Localhost detected: Bypassing auth check for development.');
+                setState({
+                    isLoggedIn: true,
+                    isLoading: false,
+                    userId: 1, // 더미 유저 ID
+                    username: 'Developer',
+                });
+                return;
+            }
+
             try {
                 const response = await fetch('/api/auth/check/', {
                     credentials: 'include', // 쿠키 포함 (vite 프록시 경유)
                 });
+                // ... (기존 로직 유지)
 
                 if (response.ok) {
                     const data = await response.json();

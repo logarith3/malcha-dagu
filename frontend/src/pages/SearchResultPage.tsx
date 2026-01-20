@@ -535,7 +535,7 @@ function RegisterModal({ query, matchedInstrument, onClose }: RegisterModalProps
         const finalSource = detectSource(finalLink);
 
         createUserItem.mutate({
-            instrument: matchedInstrument?.id,
+            instrument: matchedInstrument?.id ? Number(matchedInstrument.id) : undefined,
             title: query,
             price: Number(price),
             link: finalLink,

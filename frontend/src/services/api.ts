@@ -64,7 +64,7 @@ export async function getUserItems(params?: {
 }
 
 export async function createUserItem(data: {
-    instrument?: string;
+    instrument?: number;
     price: number;
     link: string;
     source: string;
