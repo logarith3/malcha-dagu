@@ -68,21 +68,18 @@ class SearchAggregatorService:
         brand = extract_brand(query)
         category = self._detect_category(query)
 
-        logger.debug(f"query='{query}', brand={brand}, category={category}")
 
         # Step 1: DB에서 매칭 악기 찾기
         matching_instruments, best_match = self._find_matching_instruments(query)
-
         # Step 2: 네이버 검색 (최적화된 쿼리)
         search_query, brand, category = self._build_search_query(
             query, best_match, brand, category
         )
-
+        logger.error(f"쿼리는='{search_query}', brand={brand}, category={category}")
         # 신품 기준가 가져오기 (가격 필터링용)
         reference_price = None
         if best_match:
             reference_price = best_match[0].reference_price
-
         naver_items = self.naver_service.search(
             query=search_query,
             display=display,
@@ -90,6 +87,7 @@ class SearchAggregatorService:
             category=category,
             reference_price=reference_price,
         )
+
 
         # Step 3: 유저 매물 검색 (동일 필터 적용)
         user_items, reference_info = self._search_user_items(
@@ -104,7 +102,7 @@ class SearchAggregatorService:
             0 if x.get('extended_at') else 1
         ))
 
-        logger.info(
+        logger.error(
             f"검색 완료: 네이버({len(naver_items)}) + "
             f"유저({len(user_items)}) = 총({len(all_items)})"
         )
@@ -119,8 +117,13 @@ class SearchAggregatorService:
             'user_items': user_items,
         }
 
-    def _detect_category(self, query: str) -> str:
-        """검색어에서 카테고리 추론 (DB 값과 일치)"""
+    def _detect_category(self, query: str) -> str | None:
+        """
+        검색어에서 카테고리 추론.
+        
+        Returns:
+            카테고리 문자열 또는 None (확신 없음)
+        """
         query_lower = query.lower()
 
         bass_keywords = getattr(CategoryConfig, 'BASS_KEYWORDS', [])
@@ -140,7 +143,8 @@ class SearchAggregatorService:
         if any(kw in query_lower for kw in mic_keywords):
             return 'mic'
 
-        return 'guitar'
+        # 확신할 수 없으면 None 반환 (DB 카테고리 우선 사용하도록)
+        return None
 
     def _find_matching_instruments(
         self,
@@ -219,16 +223,19 @@ class SearchAggregatorService:
         original_query: str,
         best_match: tuple[Instrument, float] | None,
         brand: str | None,
-        category: str,
-    ) -> tuple[str, str | None, str]:
+        detected_category: str | None,
+    ) -> tuple[str, str | None, str | None]:
         """
         네이버 검색용 최적화된 쿼리 생성.
+
+        Args:
+            detected_category: 검색어에서 감지된 카테고리 (None = 확신 없음)
 
         Returns:
             (search_query, brand, category)
         """
         search_query = original_query
-        detected_category = category  # 검색어 기반 카테고리 보존
+        category = detected_category  # 검색어 기반 카테고리 (None일 수 있음)
 
         # 사용자가 입력한 브랜드 추출 (있으면 존중)
         user_brand = extract_brand(original_query)
@@ -237,23 +244,32 @@ class SearchAggregatorService:
             instrument = best_match[0]
 
             # 사용자가 입력한 브랜드와 DB 브랜드가 다르면 → 사용자 브랜드 존중
-            # 예: "squier stratocaster" 검색 시 DB에 fender stratocaster만 있어도 squier 유지
             if user_brand and user_brand.lower() != instrument.brand.lower():
-                # 모델명만 DB에서 가져오고, 브랜드는 사용자 입력 유지
-                search_query = f"{user_brand} {instrument.name}"
-                brand = user_brand.lower()
-                logger.info(f"[쿼리 변환] '{original_query}' -> '{search_query}' (사용자 브랜드 유지)")
+                # [Fix] 사용자 브랜드가 이미 모델명에 포함되어 있으면, 브랜드가 아니라 모델명일 가능성이 높음
+                # 예: "sm57" 검색 -> brand='sm57' (오탐), name='sm57' -> 이 경우 DB 브랜드 'Shure'를 사용해야 함
+                if user_brand.lower() in instrument.name.lower():
+                    search_query = f"{instrument.brand} {instrument.name}"
+                    brand = instrument.brand.lower() if instrument.brand else brand
+                    logger.info(f"[오탐 보정] '{user_brand}'는 모델명임 -> DB 브랜드 '{brand}' 사용")
+                else:
+                    # 진짜 다른 브랜드인 경우 (예: Squier vs Fender)
+                    search_query = f"{user_brand} {instrument.name}"
+                    brand = user_brand.lower()
+                    logger.info(f"[쿼리 변환] '{original_query}' -> '{search_query}' (사용자 브랜드 유지)")
             else:
-                # 브랜드 일치 또는 브랜드 없음 → DB 정보 사용
                 search_query = f"{instrument.brand} {instrument.name}"
                 brand = instrument.brand.lower() if instrument.brand else brand
                 logger.info(f"[쿼리 변환] '{original_query}' -> '{search_query}'")
 
-            # 검색어 기반 카테고리 우선 (페달 키워드 감지 시 DB 카테고리 무시)
-            if detected_category != 'guitar':
-                category = detected_category
-            elif instrument.category:
+            # 카테고리 결정: DB 정보 우선 사용, 없으면 검색어 감지 결과 사용
+            if instrument.category:
+                # 1순위: DB Instrument 카테고리 (가장 신뢰)
                 category = instrument.category
+                logger.info(f"[카테고리] DB 기반: {category}")
+            elif detected_category is not None:
+                # 2순위: 검색어에서 감지된 카테고리
+                category = detected_category
+                logger.debug(f"[카테고리] 검색어 기반: {category} (DB 정보 없음)")
         else:
             # 한글 브랜드 -> 영문 치환
             search_query = normalize_brand(original_query)
@@ -263,7 +279,6 @@ class SearchAggregatorService:
             expanded_tokens = []
             for token in tokens:
                 expanded = expand_query_with_aliases(token)
-                # 별칭이 있으면 첫 번째 확장된 값 사용 (원본 제외)
                 alias = next((e for e in expanded if e.lower() != token.lower()), None)
                 expanded_tokens.append(alias if alias else token)
             search_query = ' '.join(expanded_tokens)
@@ -289,36 +304,35 @@ class SearchAggregatorService:
         """
         now = timezone.now()
 
-        if matching_instruments:
-            # 매칭된 악기들의 UserItem 검색
-            user_items_qs = UserItem.objects.filter(
-                is_active=True,
-                is_under_review=False,  # 검토 중 매물 제외
-                expired_at__gt=now,
-                instrument__in=matching_instruments,
-            ).select_related('instrument')[:display * 2]  # 필터링 여유분
-        else:
-            # 매칭 악기 없으면 제목/브랜드 검색
-            user_items_qs = UserItem.objects.filter(
-                is_active=True,
-                is_under_review=False,  # 검토 중 매물 제외
-                expired_at__gt=now,
-            ).filter(
-                models.Q(instrument__name__icontains=query) |
-                models.Q(instrument__brand__icontains=query) |
-                models.Q(title__icontains=query)
-            ).select_related('instrument')[:display * 2]
+        # 1. 쿼리 구성: 매칭된 악기 OR 직접 텍스트 매칭
+        q_filter = models.Q(instrument__name__icontains=query) | \
+                   models.Q(instrument__brand__icontains=query) | \
+                   models.Q(title__icontains=query)
 
-        # 딕셔너리 변환 + 필터링 (네이버와 동일 기준)
+        if matching_instruments:
+            q_filter |= models.Q(instrument__in=matching_instruments)
+
+        logger.info(f"UserItem search filter: {q_filter}")
+
+        user_items_qs = UserItem.objects.filter(
+            q_filter,
+            # is_active=True,         # 유저 요청으로 활성 체크 해제
+            # is_under_review=False,  # 유저 요청으로 검토 체크 해제
+            # expired_at__gt=now,     # 만료 체크 해제
+        ).select_related('instrument')[:display * 2]
+        
+        logger.info(f"Found {user_items_qs.count()} user items")
+
+        # 딕셔너리 변환 + 필터링 제거 (유저 매물은 필터링하지 않음)
         user_items = []
         reference_info = None
 
         for item in user_items_qs:
             title = item.title or str(item.instrument)
 
-            # 통합 필터 적용 (블랙리스트 + 가격 + 카테고리)
-            if not filter_user_item(title, item.price, category):
-                continue
+            # 유저 매물은 필터링 무시 (사용자 요청)
+            # if not filter_user_item(title, item.price, category):
+            #     continue
 
             if len(user_items) >= display:
                 break

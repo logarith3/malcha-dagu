@@ -248,7 +248,7 @@ class NaverShoppingService:
                 filter_stats[reason] = filter_stats.get(reason, 0) + 1
 
         # 필터링 통계 로그
-        logger.info(
+        logger.error(
             f"[필터 통계] 통과: {filter_stats['passed']} | "
             f"가격: {filter_stats['price']} | "
             f"동적가격: {filter_stats['dynamic_price']} | "

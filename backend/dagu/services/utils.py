@@ -126,9 +126,27 @@ def extract_brand(query: str) -> str | None:
             return brand
 
     # 첫 단어를 브랜드로 가정 (2글자 이상)
+    # 단, 모델명이나 카테고리 키워드인 경우 제외 (예: "sm57", "strat")
     words = query.split()
     if words and len(words[0]) > 2:
-        return words[0].lower()
+        candidate = words[0].lower()
+        
+        # 1. 모델 별칭 체크
+        aliases = _get_model_aliases()
+        if candidate in aliases:
+            return None
+            
+        # 2. 카테고리 키워드 체크 (예: guitar, bass, sm57 등)
+        category_keywords = _get_category_keywords()
+        for kw_list in category_keywords.values():
+            if candidate in kw_list:
+                return None
+        
+        # 3. 모델명 밸류 체크 (Alias의 target 값)
+        if candidate in [v.lower() for v in aliases.values()]:
+            return None
+
+        return candidate
 
     return None
 
@@ -146,6 +164,7 @@ def _get_category_keywords() -> dict[str, list[str]]:
         'effect': getattr(CategoryConfig, 'PEDAL_KEYWORDS', []),
         'amp': getattr(CategoryConfig, 'AMP_KEYWORDS', []),
         'acoustic': getattr(CategoryConfig, 'ACOUSTIC_KEYWORDS', []),
+        'mic': getattr(CategoryConfig, 'MIC_KEYWORDS', []),
     }
 
 

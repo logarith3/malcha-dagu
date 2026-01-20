@@ -30,12 +30,6 @@ def filter_user_item(
         True = 통과, False = 탈락
     """
     # [필터 1] 블랙리스트
-    if not check_blacklist(title):
-        return False
-
-    # [필터 2] 카테고리 불일치 (카테고리가 주어진 경우)
-    if category and not check_category_mismatch(category, title):
-        return False
 
     return True
 
@@ -94,33 +88,42 @@ _filter_stats = FilterStats()
 @lru_cache(maxsize=1)
 def get_blacklist() -> tuple[str, ...]:
     """
-    블랙리스트 로드 및 정규화 (캐싱 적용).
-    - 소문자 변환
-    - 중복 제거
-    - 비정상적으로 긴 단어 경고
-    - lru_cache로 앱 시작 시 1회만 처리
-
-    Returns:
-        tuple[str, ...]: 캐싱을 위해 불변 tuple 반환
+    블랙리스트 로드 및 정규화 (최적화 버전).
+    - 중복 제거 및 소문자 정규화
+    - 긴 단어 순서로 정렬 (필터링 정확도 향상)
+    - 로깅 레벨 최적화 및 비정상 데이터 필터링
     """
+    # 1. 설정값 가져오기 (없으면 빈 리스트)
     raw_list = getattr(FilterConfig, 'BLACKLIST_KEYWORDS', [])
 
     if not raw_list:
-        logger.warning("BLACKLIST_KEYWORDS가 비어있습니다.")
+        logger.warning("⚠️ BLACKLIST_KEYWORDS가 설정되어 있지 않거나 비어있습니다.")
         return tuple()
 
-    result = set()
-    for item in raw_list:
-        if item:
-            word = str(item).strip().lower()
-            # 비정상적으로 긴 단어 감지 (쉼표 누락으로 문자열 결합된 경우)
-            if len(word) > 25:
-                logger.warning(f"블랙리스트에 비정상적으로 긴 단어 발견: '{word}'")
-            result.add(word)
+    # 2. 데이터 정제 (Set Comprehension으로 속도 향상)
+    # 문자열인 것만 골라내서 strip, lower 처리
+    processed_set = {
+        str(item).strip().lower()
+        for item in raw_list
+        if item and len(str(item).strip()) > 0
+    }
 
-    logger.info(f"블랙리스트 로드 완료: {len(result)}개 키워드")
-    return tuple(result)
+    result_list = []
+    for word in processed_set:
+        # 비정상적으로 긴 단어 경고 (설정 파일 오타 감지)
+        if len(word) > 25:
+            logger.warning(f"🚩 블랙리스트에 비정상적으로 긴 단어 발견 (오타 확인 권장): '{word}'")
 
+        # [기존 개선] 루프 안의 logger.error(word)는 서버 부하를 주므로 제거하거나 debug로 변경
+        # logger.debug(f"Blacklist word loaded: {word}")
+        result_list.append(word)
+
+    # 3. 핵심 개선: 단어 길이에 따라 내림차순 정렬
+    # '하드케이스'가 '케이스'보다 앞에 와야 정확한 매칭이 가능합니다.
+    result_list.sort(key=len, reverse=True)
+
+    logger.info(f"✅ 블랙리스트 로드 완료: {len(result_list)}개 키워드")
+    return tuple(result_list)
 
 def clear_blacklist_cache():
     """블랙리스트 캐시 초기화 (설정 변경 시 호출)"""
@@ -157,7 +160,7 @@ def check_blacklist(title: str) -> bool:
                 return False
         else:
             # 영어: 단어 경계 검사
-            pattern = rf'(?<![a-zA-Z]){re.escape(blackword)}(?![a-zA-Z])'
+            pattern = rf'(?<![a-zA-Z0-9]){re.escape(blackword)}(?![a-zA-Z0-9])'
             if re.search(pattern, title_lower):
                 logger.debug(f"[Blacklist] 탈락: '{blackword}' - {title[:50]}")
                 return False
@@ -165,7 +168,7 @@ def check_blacklist(title: str) -> bool:
     return True
 
 
-def check_min_price(price: int, min_price: int = None) -> bool:
+def check_min_price(price: int, category: str, reference_price: int, min_price: int = None) -> bool:
     """
     최소 가격 검사.
     부품/케이스 등 너무 싼 물건 제외.
@@ -174,56 +177,54 @@ def check_min_price(price: int, min_price: int = None) -> bool:
         True = 통과
         False = 탈락
     """
+
     if min_price is None:
-        min_price = CrawlerConfig.MIN_PRICE_KRW
-    
+        min_price = calculate_min_price(category, reference_price)
     if price < min_price:
         return False
     
     return True
 
 
-def check_brand_integrity(target_brand: str, title: str) -> bool:
+def check_brand_integrity(target_brand: str, title: str, category: str = None) -> bool:
     """
-    브랜드 무결성 검사.
-    - 상위 브랜드(Fender) 검색 시 하위 브랜드(Squier) 제외
-    - BRAND_HIERARCHY 기반
-    
-    Returns:
-        True = 통과
-        False = 탈락
+    카테고리별 브랜드 무결성 검사.
+    - guitar, bass: 상위 브랜드 검색 시 하위 브랜드(Hierarchy) 엄격 제외
+    - 카테고리 불확실(None): 하이어라키 검사 건너뜀 (오탐 방지)
+    - 기타 카테고리: 브랜드 존재 여부 및 단어 경계만 검사 (유연함 유지)
     """
+    if not target_brand or 'pending' in target_brand.lower():
+        return True
+
     target_lower = target_brand.lower().strip()
     title_lower = title.lower()
     
-    # 브랜드가 없거나 Pending이면 통과
-    if not target_lower or 'pending' in target_lower:
-        return True
-    
-    # 핵심 브랜드명 추출 (첫 단어)
-    core_brand = target_lower.split()[0] if target_lower else ""
-    if not core_brand or len(core_brand) <= 1:
-        return True
-    
-    # 브랜드 하이어라키 검사
-    hierarchy = getattr(FilterConfig, 'BRAND_HIERARCHY', {})
-    if core_brand in hierarchy:
-        for lower_brand in hierarchy[core_brand]:
-            if lower_brand in title_lower:
-                logger.debug(f"[BrandFilter] 하위 브랜드: '{lower_brand}' - {title[:50]}")
-                return False
-    
-    # 검색 브랜드(또는 한글 별칭)가 제목에 있는지 확인
-    aliases = [k for k, v in getattr(CategoryConfig, 'BRAND_NAME_MAPPING', {}).items() if v == core_brand]
-    allowed_keywords = [core_brand] + aliases
-    
-    if any(alias in title_lower for alias in allowed_keywords):
-        return True
-    
-    # 브랜드가 제목에 없으면 탈락
-    logger.debug(f"[BrandFilter] 브랜드 불일치: '{core_brand}'(및 별칭 {aliases}) 없음 - {title[:50]}")
-    return False
+    # 1. [기타/베이스 전용] 브랜드 하이어라키 검사
+    # 카테고리가 확실할 때만 적용 (None = 확신 없음 → 하이어라키 검사 스킵)
+    if category is not None and category in ['guitar', 'bass']:
+        hierarchy = getattr(FilterConfig, 'BRAND_HIERARCHY', {})
+        lower_brands = hierarchy.get(target_lower, [])
 
+        for lb in lower_brands:
+            if lb.lower() in title_lower:
+                logger.debug(f"⛔ [BrandFilter] 하위 브랜드 제외 ({category}): '{lb}' in '{title[:50]}'")
+                return False
+
+    # 2. [공통] 허용 키워드 리스트업 (본래 이름 + 한/영 별칭)
+    # BRAND_NAME_MAPPING에서 이 브랜드에 해당하는 별칭을 모두 가져옴
+    aliases = [k for k, v in getattr(CategoryConfig, 'BRAND_NAME_MAPPING', {}).items() if v == target_lower]
+    allowed_keywords = [target_lower] + aliases
+
+    # 3. [공통] 정규표현식을 이용한 브랜드 존재 확인 (오탐 방지)
+    # 제목에 검색한 브랜드나 그 별칭이 '단어'로서 존재하는지 확인합니다.
+    for kw in allowed_keywords:
+        # 영문/숫자 경계를 포함한 패턴 (예: 'ESP'가 'Response'에 걸리지 않도록)
+        pattern = rf'(?<![a-zA-Z0-9]){re.escape(kw)}(?![a-zA-Z0-9])'
+        if re.search(pattern, title_lower):
+            return True
+
+    logger.debug(f"❌ [BrandFilter] 브랜드 불일치: '{target_lower}' 없음 - {title[:50]}")
+    return False
 
 def validate_tokens(model_name: str, title: str) -> bool:
     """
@@ -261,10 +262,29 @@ def validate_tokens(model_name: str, title: str) -> bool:
 
 
 def _contains_keywords(title_lower: str, config_key: str) -> bool:
-    """config에서 키워드 목록을 가져와 제목에 포함되어 있는지 확인"""
+    """
+    config에서 키워드 목록을 가져와 제목에 '독립된 단어'로 포함되어 있는지 확인.
+    정규표현식을 사용하여 부분 일치로 인한 오탐을 방지합니다.
+    """
     keywords = getattr(FilterConfig, config_key, [])
-    return any(kw.lower() in title_lower for kw in keywords)
 
+    for kw in keywords:
+        kw_clean = kw.lower().strip()
+        if not kw_clean:
+            continue
+
+        # 1. 한글이 포함된 경우: 기존처럼 부분 일치 허용 (띄어쓰기 무관)
+        if any('\uac00' <= char <= '\ud7a3' for char in kw_clean):
+            if kw_clean in title_lower:
+                return True
+        else:
+            # 2. 영문/숫자만 있는 경우: 단어 경계 검사 적용
+            # (?<![a-zA-Z0-9]) : 앞뒤에 영문이나 숫자가 붙어있지 않아야 함
+            pattern = rf'(?<![a-zA-Z0-9]){re.escape(kw_clean)}(?![a-zA-Z0-9])'
+            if re.search(pattern, title_lower):
+                return True
+
+    return False
 
 def check_category_mismatch(search_category: str, title: str) -> bool:
     """
@@ -325,28 +345,28 @@ def check_category_mismatch(search_category: str, title: str) -> bool:
 
 
 def check_category_fields(item: dict) -> bool:
-    """
-    API 응답의 category3, category4 필드 검사.
-    액세서리 카테고리면 제외.
-    
-    Returns:
-        True = 통과 (본품)
-        False = 탈락 (액세서리/부품)
-    """
-    category3 = item.get('category3', '').lower()
-    category4 = item.get('category4', '').lower()
-    
+    # 1. 필드 값 확보 (소문자화 및 None 방지)
+    # 네이버 API는 category1~4까지 제공하므로 3, 4를 중점적으로 봅니다.
+    cat3 = str(item.get('category3', '')).lower()
+    cat4 = str(item.get('category4', '')).lower()
+
+    # 카테고리 정보가 아예 없으면 일단 통과 (제목 필터에서 걸러질 것을 기대)
+    if not cat3 and not cat4:
+        return True
+
+    # 2. 블랙리스트 로드 (미리 소문자화된 리스트를 가져온다고 가정)
+    # 예: ['용품', '케이스', '소모품', '부품', '피크', '스트랩', '스탠드']
     blacklist = getattr(FilterConfig, 'ACCESSORY_CATEGORY_BLACKLIST', [])
-    
-    for cat_kw in blacklist:
-        cat_kw_lower = cat_kw.lower()
-        if cat_kw_lower in category3 or cat_kw_lower in category4:
-            logger.debug(f"⛔ 카테고리 필드 탈락: '{cat_kw}' in category3='{category3}' / category4='{category4}'")
+
+    for kw in blacklist:
+        kw_lower = kw.lower()
+        # 3. 부분 일치 검사
+        if kw_lower in cat3 or kw_lower in cat4:
+            logger.debug(f"⛔ [CategoryFieldFilter] 탈락: '{kw_lower}' 발견 "
+                         f"(cat3: '{cat3}', cat4: '{cat4}')")
             return False
-    
+
     return True
-
-
 def check_product_type(item: dict) -> bool:
     """
     productType 필드 검사.
@@ -511,7 +531,6 @@ def filter_naver_item_with_reason(
         (정제된 아이템 또는 None, 탈락 이유)
     """
     title = clean_html_tags(item.get('title', ''))
-
     try:
         lprice = int(item.get('lprice', 0))
     except (ValueError, TypeError):
@@ -520,24 +539,8 @@ def filter_naver_item_with_reason(
 
     # [필터 1] 최소 가격
 
-    if not check_min_price(lprice, min_price):
+    if not check_min_price(lprice,category,reference_price, min_price):
         return None, 'price'
-
-    # [필터 2] 블랙리스트
-    if not check_blacklist(title):
-        logger.info(f"[Filter] ❌ 블랙리스트 - {title[:60]}")
-        return None, 'blacklist'
-
-    # [필터 3] 브랜드 무결성
-    if brand and not check_brand_integrity(brand, title):
-        logger.info(f"[Filter] ❌ 브랜드불일치 '{brand}' - {title[:60]}")
-        return None, 'brand'
-
-    # [필터 4] 카테고리 불일치
-    if category and not check_category_mismatch(category, title):
-        cat_info = f"[{item.get('category1', '')}/{item.get('category2', '')}/{item.get('category3', '')}/{item.get('category4', '')}]"
-        logger.info(f"[Filter] ❌ 카테고리불일치 '{category}' {cat_info} - {title[:60]}")
-        return None, 'category'
 
     # [필터 5] 카테고리 필드 검사
     if not check_category_fields(item):
@@ -545,10 +548,26 @@ def filter_naver_item_with_reason(
         logger.info(f"[Filter] ❌ 액세서리카테고리 {cat_info} - {title[:60]}")
         return None, 'category_fields'
 
-    # [필터 6] 상품 타입 검사
-    if not check_product_type(item):
-        logger.info(f"[Filter] ❌ 상품타입(중고/단종) - {title[:60]}")
-        return None, 'product_type'
+
+    # [필터 2] 블랙리스트
+    if not check_blacklist(title):
+        logger.info(f"[Filter] ❌ 블랙리스트 - {title[:60]}")
+        return None, 'blacklist'
+
+
+    # [필터 4] 카테고리 불일치
+    if category and not check_category_mismatch(category, title):
+        cat_info = f"[{item.get('category1', '')}/{item.get('category2', '')}/{item.get('category3', '')}/{item.get('category4', '')}]"
+        logger.info(f"[Filter] ❌ 카테고리불일치 '{category}' {cat_info} - {title[:60]}")
+        return None, 'category'
+
+    # [필터 3] 브랜드 무결성
+    if brand and not check_brand_integrity(brand, title, category):
+        logger.info(f"[Filter] ❌ 브랜드불일치 '{brand}' - {title[:60]}")
+        return None, 'brand'
+
+
+
 
     # 모든 필터 통과
     image_url = item.get('image', '')

@@ -93,6 +93,7 @@ class NaverShoppingService:
         from .config import CategoryConfig
         normalized_query = query
         for kr_name, en_brand in CategoryConfig.BRAND_NAME_MAPPING.items():
+            logger.debug(f"Brand: {kr_name}")
             if kr_name in query:
                 normalized_query = query.replace(kr_name, en_brand)
                 logger.debug(f"[Cache] 검색어 정규화: '{query}' -> '{normalized_query}'")
@@ -450,9 +451,10 @@ class SearchAggregatorService:
         from .config import CategoryConfig
         
         query_lower = query.lower()
+        print(query_lower)
         
         # 알려진 브랜드 목록에서 찾기
-        known_brands = CategoryConfig.GUITAR_BRANDS + [
+        known_brands = CategoryConfig.KNOWN_BRANDS + [
             'boss', 'ibanez', 'jackson', 'charvel', 'schecter', 'suhr',
             'mesa', 'vox', 'marshall', 'orange', 'ampeg', 'tc electronic'
         ]
