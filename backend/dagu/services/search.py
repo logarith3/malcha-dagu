@@ -13,7 +13,7 @@ from django.db import models
 from django.utils import timezone
 
 from ..config import CategoryConfig
-from ..filters import calculate_match_score, filter_user_item
+from ..filters import calculate_match_score, filter_user_item, filter_user_item_by_brand
 from ..models import Instrument, UserItem, SearchMissLog
 from .naver import NaverShoppingService
 from .utils import (
@@ -23,6 +23,7 @@ from .utils import (
     find_best_matching_instruments,
     extract_brand,
     normalize_brand,
+    is_known_brand,
 )
 
 logger = logging.getLogger(__name__)
@@ -117,6 +118,9 @@ class SearchAggregatorService:
                 'brand': inst.brand,
                 'category': inst.category,
             }
+        else:
+            # DB 미매칭 검색어 로깅 (자주 검색되지만 DB에 없는 악기 추적)
+            SearchMissLog.log_miss(query)
 
         return {
             'query': query,
@@ -203,6 +207,9 @@ class SearchAggregatorService:
                 'brand': inst.brand,
                 'category': inst.category,
             }
+        else:
+            # DB 미매칭 검색어 로깅
+            SearchMissLog.log_miss(query)
 
         return {
             'query': query,
@@ -402,23 +409,42 @@ class SearchAggregatorService:
         """
         now = timezone.now()
 
-        # 1. 쿼리 구성: 매칭된 악기 OR 직접 텍스트 매칭
-        q_filter = models.Q(instrument__name__icontains=query) | \
-                   models.Q(instrument__brand__icontains=query) | \
-                   models.Q(title__icontains=query)
+        # 1. 쿼리를 토큰으로 분리하여 AND 조건으로 검색
+        # 모든 토큰이 title/brand/name 중 하나에 포함되어야 결과에 포함
+        query_tokens = [t.lower() for t in query.split() if len(t) > 1]
+        
+        if query_tokens:
+            # AND 기반 필터 구성
+            q_filter = models.Q()
+            for i, token in enumerate(query_tokens):
+                token_condition = (
+                    models.Q(title__icontains=token) |
+                    models.Q(instrument__name__icontains=token) |
+                    models.Q(instrument__brand__icontains=token)
+                )
+                if i == 0:
+                    q_filter = token_condition
+                else:
+                    q_filter &= token_condition  # AND 결합
+        else:
+            # 토큰이 없으면 전체 query로 검색
+            q_filter = models.Q(instrument__name__icontains=query) | \
+                       models.Q(instrument__brand__icontains=query) | \
+                       models.Q(title__icontains=query)
 
-        if matching_instruments:
-            q_filter |= models.Q(instrument__in=matching_instruments)
+        # best_match가 있으면 해당 악기의 매물도 추가 (정확히 일치하는 악기만)
+        if best_match and best_match[1] >= 0.8:  # 점수 0.8 이상만
+            q_filter |= models.Q(instrument=best_match[0])
 
-        # 검색어 토큰화로 더 유연한 검색 (예: "boss ds-1" → "boss" AND "ds-1")
-        query_tokens = tokenize_query(query)
-        if len(query_tokens) >= 2:
-            # 모든 토큰이 title 또는 instrument 필드에 포함된 경우도 매칭
-            for token in query_tokens:
-                if len(token) >= 2:  # 너무 짧은 토큰 제외
-                    q_filter |= models.Q(title__icontains=token)
-                    q_filter |= models.Q(instrument__name__icontains=token)
-                    q_filter |= models.Q(instrument__brand__icontains=token)
+        # 부모-자식 계층형 검색: best_match가 있으면 해당 악기의 자식들도 포함
+        if best_match and best_match[1] >= 0.8:
+            parent_instrument = best_match[0]
+            descendants = parent_instrument.get_all_descendants()
+            if descendants:
+                q_filter |= models.Q(instrument__in=descendants)
+                logger.info(
+                    f"[계층형 검색] '{parent_instrument}' 하위 악기 {len(descendants)}개 포함"
+                )
 
         logger.info(f"UserItem search filter: {q_filter}")
 
@@ -438,9 +464,9 @@ class SearchAggregatorService:
         for item in user_items_qs:
             title = item.title or str(item.instrument)
 
-            # 유저 매물은 필터링 무시 (사용자 요청)
-            # if not filter_user_item(title, item.price, category):
-            #     continue
+            # [필터 1] 브랜드 필터링 - 검색 브랜드와 매물 브랜드 불일치 시 제외
+            if not filter_user_item_by_brand(query, item.instrument.brand):
+                continue
 
             if len(user_items) >= display:
                 break

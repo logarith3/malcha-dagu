@@ -158,6 +158,7 @@ class PopularSearchView(APIView):
     def get(self, request):
         from datetime import timedelta
         from django.db.models import Count
+        from .services.utils import normalize_brand, normalize_search_term
 
         # 파라미터
         try:
@@ -167,57 +168,56 @@ class PopularSearchView(APIView):
         limit = min(max(limit, 1), 10)  # 1~10 범위
 
         terms = []
-        seen_ids = set()
+        seen_normalized = set()  # 중복 제거용 (정규화된 키)
 
-        # 1단계: 최근 1시간 클릭 기준 트렌딩
-        one_hour_ago = timezone.now() - timedelta(hours=1)
-        hourly_trending = UserItem.objects.filter(
-            clicks__clicked_at__gte=one_hour_ago,
-            is_active=True,
-        ).annotate(
-            recent_clicks=Count('clicks')
-        ).order_by('-recent_clicks')[:limit]
+        def add_term(term):
+            """검색어 추가 함수 (중복 체크 및 limit 확인)"""
+            if len(terms) >= limit:
+                return False
+            
+            if not term:
+                return True
 
-        for item in hourly_trending:
-            term = f"{item.instrument.brand} {item.instrument.name}"
-            if term not in terms:
+            # 정규화하여 중복 체크 (예: "펜더" -> "fender")
+            # 브랜드명 통일 + 소문자/공백제거
+            normalized = normalize_search_term(normalize_brand(term))
+            
+            if normalized not in seen_normalized:
                 terms.append(term)
-                seen_ids.add(item.id)
+                seen_normalized.add(normalized)
+            
+            return True
 
-        # 2단계: 데이터 부족 시 24시간으로 확장
+        # 1단계: 실제 검색 횟수 우선 (최근 7일)
+        # - 사용자가 실제로 입력한 "의도"가 가장 정확함
+        week_ago = timezone.now() - timedelta(days=7)
+        popular_searches = SearchQuery.objects.filter(
+            last_searched_at__gte=week_ago
+        ).order_by('-search_count')[:limit * 3]
+
+        for sq in popular_searches:
+            add_term(sq.query)
+
+        # 2단계: 데이터 부족 시 최근 클릭된 매물 (보조)
+        # - 검색 데이터가 없을 때 트렌딩 매물로 보완
         if len(terms) < limit:
             day_ago = timezone.now() - timedelta(hours=24)
-            daily_trending = UserItem.objects.filter(
+            recent_clicks = UserItem.objects.filter(
                 clicks__clicked_at__gte=day_ago,
                 is_active=True,
-            ).exclude(
-                id__in=seen_ids
             ).annotate(
-                recent_clicks=Count('clicks')
-            ).order_by('-recent_clicks')[:limit - len(terms)]
+                click_count=Count('clicks')
+            ).order_by('-click_count')[:limit * 3]
 
-            for item in daily_trending:
-                term = f"{item.instrument.brand} {item.instrument.name}"
-                if term not in terms:
-                    terms.append(term)
-                    seen_ids.add(item.id)
+            for item in recent_clicks:
+                # 브랜드 + 이름 조합
+                term_candidate = f"{item.instrument.brand} {item.instrument.name}"
+                add_term(term_candidate)
 
-        # 3단계: 그래도 부족하면 검색 횟수 fallback
-        if len(terms) < limit:
-            week_ago = timezone.now() - timedelta(days=7)
-            popular = SearchQuery.objects.filter(
-                last_searched_at__gte=week_ago
-            ).order_by('-search_count')[:limit - len(terms)]
-
-            for item in popular:
-                if item.query not in terms:
-                    terms.append(item.query)
-
-        # 4단계: 최종 fallback - 기본값 추가
-        defaults = ['펜더 스트랫', '깁슨 레스폴', '테일러 어쿠스틱', 'SM58']
+        # 3단계: 최종 fallback - 기본값
+        defaults = ['펜더 스트랫', '깁슨 레스폴', '테일러 어쿠스틱', '야마하 THR']
         for d in defaults:
-            if d not in terms and len(terms) < limit:
-                terms.append(d)
+            add_term(d)
 
         return Response({'terms': terms[:limit]})
 
@@ -259,10 +259,14 @@ class InstrumentViewSet(viewsets.ModelViewSet):
         if category:
             queryset = queryset.filter(category=category)
         if search:
-            queryset = queryset.filter(
-                models.Q(name__icontains=search) |
-                models.Q(brand__icontains=search)
-            )
+            # 검색어를 공백으로 분리하여 각 단어가 브랜드나 이름 중 하나에 포함되어야 함 (AND 조건)
+            # 예: "fender strat" -> (brand="fender" OR name="fender") AND (brand="strat" OR name="strat")
+            search_terms = search.split()
+            for term in search_terms:
+                queryset = queryset.filter(
+                    models.Q(name__icontains=term) |
+                    models.Q(brand__icontains=term)
+                )
         
         return queryset
 

@@ -16,6 +16,7 @@ interface SearchBarProps {
     placeholder?: string;
     initialValue?: string;
     showSuggestions?: boolean;
+    hideHint?: boolean;
 }
 
 interface Instrument {
@@ -31,6 +32,7 @@ export default function SearchBar({
     placeholder = '악기 이름으로 검색 (예: 펜더 스트랫)',
     initialValue = '',
     showSuggestions = true,
+    hideHint = false,
 }: SearchBarProps) {
     const [query, setQuery] = useState(initialValue);
     const [isFocused, setIsFocused] = useState(false);
@@ -241,14 +243,16 @@ export default function SearchBar({
             </div>
 
             {/* 검색 힌트 */}
-            <motion.p
-                className="mt-3 text-center text-sm text-stone-500"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.8 }}
-                transition={{ delay: 0.3 }}
-            >
-                브랜드, 모델명, 또는 카테고리로 검색해보세요
-            </motion.p>
+            {!hideHint && (
+                <motion.p
+                    className="mt-3 text-center text-sm text-stone-500"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.8 }}
+                    transition={{ delay: 0.3 }}
+                >
+                    브랜드, 모델명, 또는 카테고리로 검색해보세요
+                </motion.p>
+            )}
         </motion.form>
     );
 }

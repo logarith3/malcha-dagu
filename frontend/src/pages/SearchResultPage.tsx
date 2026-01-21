@@ -249,22 +249,27 @@ export default function SearchResultPage() {
                 >
                     {/* 헤더 */}
                     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-stone-200 shadow-sm">
-                        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-4">
-                            <div className="flex items-center gap-2 sm:gap-4">
+                        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-3">
+                            <div className="flex items-center gap-3 sm:gap-6">
                                 <motion.button
                                     onClick={() => navigate('/')}
-                                    className="text-lg sm:text-2xl font-black text-matcha-600 tracking-tight shrink-0"
+                                    className="text-2xl sm:text-4xl font-black text-matcha-600 tracking-tighter shrink-0 flex items-center gap-1.5"
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                 >
+                                    <span className="text-xl sm:text-3xl">🍵</span>
                                     DAGU
+                                    <span className="text-xs sm:text-sm font-bold text-matcha-500 ml-0.5 -mt-3 rotate-12">
+                                        beta
+                                    </span>
                                 </motion.button>
-                                <div className="flex-1 min-w-0">
+                                <div className="flex-1 max-w-2xl">
                                     <SearchBar
                                         onSearch={handleSearch}
                                         isLoading={isLoading}
                                         initialValue={query}
                                         placeholder="다른 악기 검색"
+                                        hideHint={true}
                                     />
                                 </div>
                             </div>
@@ -444,22 +449,21 @@ export default function SearchResultPage() {
     );
 }
 
-// 외부 검색 버튼 컴포넌트
 const ExternalSearchButtons = ({ query, vertical }: { query: string, vertical: boolean }) => (
-    <div className={`flex ${vertical ? 'flex-col gap-3' : 'flex-wrap gap-2'}`}>
+    <div className={`grid ${vertical ? 'grid-cols-1 gap-3' : 'grid-cols-3 gap-2'}`}>
         {/* Mule */}
         <a
             href={`https://www.mule.co.kr/bbs/market/sell?qf=title&qs=${encodeURIComponent(query.slice(0, 20))}&sb=wdate&sd=desc`}
             target="_blank"
             rel="noopener noreferrer"
             className={`
-                flex items-center ${vertical ? 'justify-between px-5 py-4' : 'justify-center gap-2 px-6 py-3'} 
+                flex items-center ${vertical ? 'justify-between px-5 py-4' : 'justify-center gap-1 px-2 py-3'} 
                 rounded-xl bg-blue-100 text-blue-700
                 hover:bg-blue-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-200/50
                 transition-all duration-200 group
             `}
         >
-            <span className={`font-bold ${vertical ? 'text-base' : ''}`}>Mule</span>
+            <span className={`font-bold ${vertical ? 'text-base' : 'text-sm sm:text-base'}`}>Mule</span>
             <svg className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:opacity-100 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
         </a>
 
@@ -469,13 +473,13 @@ const ExternalSearchButtons = ({ query, vertical }: { query: string, vertical: b
             target="_blank"
             rel="noopener noreferrer"
             className={`
-                flex items-center ${vertical ? 'justify-between px-5 py-4' : 'justify-center gap-2 px-6 py-3'} 
+                flex items-center ${vertical ? 'justify-between px-5 py-4' : 'justify-center gap-1 px-2 py-3'} 
                 rounded-xl bg-yellow-100 text-yellow-700
                 hover:bg-yellow-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-yellow-200/50
                 transition-all duration-200 group
             `}
         >
-            <span className={`font-bold ${vertical ? 'text-base' : ''}`}>Reverb</span>
+            <span className={`font-bold ${vertical ? 'text-base' : 'text-sm sm:text-base'}`}>Reverb</span>
             <svg className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:opacity-100 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
         </a>
 
@@ -485,13 +489,13 @@ const ExternalSearchButtons = ({ query, vertical }: { query: string, vertical: b
             target="_blank"
             rel="noopener noreferrer"
             className={`
-                flex items-center ${vertical ? 'justify-between px-5 py-4' : 'justify-center gap-2 px-6 py-3'} 
+                flex items-center ${vertical ? 'justify-between px-5 py-4' : 'justify-center gap-1 px-2 py-3'} 
                 rounded-xl bg-red-100 text-red-700
                 hover:bg-red-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-red-200/50
                 transition-all duration-200 group
             `}
         >
-            <span className={`font-bold ${vertical ? 'text-base' : ''}`}>Digimart</span>
+            <span className={`font-bold ${vertical ? 'text-base' : 'text-sm sm:text-base'}`}>Digimart</span>
             <svg className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:opacity-100 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
         </a>
     </div>

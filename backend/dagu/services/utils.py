@@ -148,6 +148,31 @@ def extract_brand(query: str) -> str | None:
 
         return candidate
 
+
+def is_known_brand(brand_name: str) -> bool:
+    """
+    해당 브랜드명이 알려진 브랜드 목록(설정값)에 포함되는지 확인.
+    검색 필터링 시 잘못된 브랜드 추정으로 인한 결과 누락 방지용.
+    """
+    if not brand_name:
+        return False
+        
+    brand_lower = brand_name.lower()
+    
+    # 1. 기타 브랜드 목록
+    if brand_lower in [b.lower() for b in _get_guitar_brands()]:
+        return True
+        
+    # 2. 추가 알려진 브랜드 목록
+    if brand_lower in [b.lower() for b in _get_known_brands()]:
+        return True
+        
+    # 3. 매핑된 영문 브랜드 목록
+    if brand_lower in [v.lower() for v in _get_brand_mapping().values()]:
+        return True
+        
+    return False
+
     return None
 
 
@@ -225,6 +250,9 @@ def normalize_search_term(term: str) -> str:
     # 하이픈, 언더스코어, 공백 제거
     result = re.sub(r'[-_\s]+', '', result)
     return result
+
+
+
 
 
 def tokenize_query(query: str) -> list[str]:
@@ -305,13 +333,14 @@ def calculate_instrument_match_score(query: str, instrument: Instrument) -> floa
     """
     검색어와 악기의 매칭 스코어 계산.
 
-    Scoring Tiers:
-        1.0  - 별칭/정규화 정확 일치
-        0.95 - 전체 이름 일치 또는 별칭 포함
-        0.9  - 모델명이 검색어에 포함
-        0.7  - 검색어가 모델명에 포함 (길이 비율 적용)
-        0.6  - 토큰 기반 매칭
-        0.5  - 유사도 기반 매칭
+    Scoring Tiers (개선된 우선순위):
+        1.0  - 정규화된 이름 정확 일치 (DS-1 == DS-1)
+        0.95 - 별칭 확장 후 정확 일치
+        0.9  - 단어 경계 일치 (검색어가 완전한 토큰)
+        0.7  - 부분 포함 + Length Penalty (접미사 없음)
+        0.5  - 부분 포함 + 버전 접미사 있음 (DS-1W 등)
+        0.4  - 토큰 기반 매칭
+        0.3  - 유사도 기반 매칭
 
     Args:
         query: 검색어
@@ -331,39 +360,70 @@ def calculate_instrument_match_score(query: str, instrument: Instrument) -> floa
     full_name = f"{brand} {name}".strip()
     full_normalized = normalize_search_term(full_name)
 
-    # Tier 0: 별칭 확장된 쿼리로 정확 매칭
-    for expanded in expanded_queries:
-        expanded_norm = normalize_search_term(expanded)
-        if expanded_norm == name_normalized:
-            logger.debug(f"[Score 1.0] 별칭 정확 일치: '{expanded}' == '{name}'")
-            return 1.0
-        if expanded.lower() in name.lower():
-            logger.debug(f"[Score 0.95] 별칭 포함: '{expanded}' in '{name}'")
-            return 0.95
-
-    # Tier 1: 정규화된 모델명 정확 일치
+    # =========================================================================
+    # Tier 0: 정규화된 이름 정확 일치 (최우선)
+    # =========================================================================
     if query_normalized == name_normalized:
         logger.debug(f"[Score 1.0] 정확 일치: '{query}' == '{name}'")
         return 1.0
 
-    # Tier 2: 전체 이름(브랜드+모델) 정확 일치
+    # Tier 0.5: 전체 이름(브랜드+모델) 정확 일치
     if query_normalized == full_normalized:
-        logger.debug(f"[Score 0.95] 전체 일치: '{query}' == '{full_name}'")
-        return 0.95
+        logger.debug(f"[Score 1.0] 전체 일치: '{query}' == '{full_name}'")
+        return 1.0
 
-    # Tier 3: 모델명이 검색어에 포함
+    # =========================================================================
+    # Tier 1: 별칭 확장 후 정확 일치
+    # =========================================================================
+    for expanded in expanded_queries:
+        expanded_norm = normalize_search_term(expanded)
+        if expanded_norm == name_normalized:
+            logger.debug(f"[Score 0.95] 별칭 정확 일치: '{expanded}' == '{name}'")
+            return 0.95
+
+    # =========================================================================
+    # Tier 2: 모델명이 검색어에 포함 (사용자가 더 긴 쿼리 입력)
+    # =========================================================================
     if name_normalized and name_normalized in query_normalized:
         logger.debug(f"[Score 0.9] 모델명 포함: '{name}' in '{query}'")
         return 0.9
 
-    # Tier 4: 검색어가 모델명에 포함 (길이 비율 적용)
+    # =========================================================================
+    # Tier 3: 검색어가 모델명에 포함 (부분 일치)
+    # - 버전 접미사 검사 (DS-1 vs DS-1W)
+    # - Length Penalty 적용
+    # =========================================================================
     if query_normalized and query_normalized in name_normalized:
-        length_ratio = len(query_normalized) / len(name_normalized) if name_normalized else 0
-        score = max(0.7 * length_ratio, 0.3)
-        logger.debug(f"[Score {score:.2f}] 부분 포함: '{query}' in '{name}'")
+        idx = name_normalized.find(query_normalized)
+        suffix_start = idx + len(query_normalized)
+        
+        # 검색어 뒤에 문자가 붙어있는지 확인 (버전 접미사)
+        if suffix_start < len(name_normalized):
+            next_char = name_normalized[suffix_start]
+            # 알파벳/숫자가 바로 붙어있으면 다른 모델 (DS-1W, SM57-LC 등)
+            if next_char.isalnum():
+                logger.debug(f"[Score 0.5] 버전 접미사 감지: '{query}' in '{name}' (suffix: '{name_normalized[suffix_start:]}')")
+                return 0.5
+        
+        # 접미사 없음 → Length Penalty 적용
+        length_diff = len(name_normalized) - len(query_normalized)
+        # 글자 차이가 클수록 점수 감소 (최소 0.5)
+        penalty = max(0.5, 1.0 - (length_diff * 0.05))
+        score = 0.7 * penalty
+        logger.debug(f"[Score {score:.2f}] 부분 포함: '{query}' in '{name}' (length_diff={length_diff})")
         return score
 
+    # =========================================================================
+    # Tier 4: 별칭 확장 쿼리가 모델명에 포함
+    # =========================================================================
+    for expanded in expanded_queries:
+        if expanded.lower() in name.lower():
+            logger.debug(f"[Score 0.6] 별칭 부분 포함: '{expanded}' in '{name}'")
+            return 0.6
+
+    # =========================================================================
     # Tier 5: 토큰 기반 매칭
+    # =========================================================================
     all_tokens = query_tokens.copy()
     for expanded in expanded_queries:
         all_tokens.extend(tokenize_query(expanded))
@@ -376,14 +436,16 @@ def calculate_instrument_match_score(query: str, instrument: Instrument) -> floa
     )
 
     if matched_tokens > 0 and all_tokens:
-        score = 0.6 * (matched_tokens / len(all_tokens))
+        score = 0.4 * (matched_tokens / len(all_tokens))
         logger.debug(f"[Score {score:.2f}] 토큰 매칭: {matched_tokens}/{len(all_tokens)}")
         return score
 
+    # =========================================================================
     # Tier 6: 유사도 기반 매칭 (fallback)
+    # =========================================================================
     similarity = SequenceMatcher(None, query_normalized, name_normalized).ratio()
     if similarity > 0.6:
-        score = 0.5 * similarity
+        score = 0.3 * similarity
         logger.debug(f"[Score {score:.2f}] 유사도: {similarity:.2f}")
         return score
 

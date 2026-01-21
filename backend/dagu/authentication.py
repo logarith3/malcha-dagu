@@ -61,11 +61,14 @@ class JWTCookieAuthentication(JWTAuthentication):
         raw_token = request.COOKIES.get(cookie_name)
 
         if raw_token is None:
+            # 개발 환경에서는 더미 인증 허용 (DEBUG=True일 때만)
+            if getattr(settings, 'DEBUG', False):
+                return self._get_dev_user()
             return None
 
-        # Rate Limiting 체크 (IP 기반)
+        # Rate Limiting 체크 (IP 기반) - 개발 환경에서는 비활성화
         client_ip = self._get_client_ip(request)
-        if self._is_rate_limited(client_ip):
+        if not getattr(settings, 'DEBUG', False) and self._is_rate_limited(client_ip):
             logger.warning(f"SSO rate limit exceeded for IP: {client_ip}")
             raise AuthenticationFailed('Too many authentication attempts. Please try again later.')
 
@@ -92,16 +95,26 @@ class JWTCookieAuthentication(JWTAuthentication):
             # 토큰이 유효하지 않으면 익명 사용자로 처리 (AllowAny 엔드포인트 허용)
             self._record_auth_failure(client_ip, f"token_error: {e}")
             logger.warning(f"SSO token validation failed: {e} (ip={client_ip})")
+            # 개발 환경에서는 유효하지 않은 토큰이라도 더미 유저로 인증
+            if getattr(settings, 'DEBUG', False):
+                logger.info("DEBUG mode: Falling back to dev user despite invalid token")
+                return self._get_dev_user()
             return None
         except AuthenticationFailed as e:
             # Rate limit 에러만 re-raise, 그 외는 None 반환
             if 'Too many' in str(e):
                 raise
             logger.warning(f"SSO auth failed: {e} (ip={client_ip})")
+            # 개발 환경에서는 더미 유저로 인증
+            if getattr(settings, 'DEBUG', False):
+                return self._get_dev_user()
             return None
         except Exception as e:
             self._record_auth_failure(client_ip, f"unexpected_error: {e}")
             logger.error(f"SSO authentication error: {e} (ip={client_ip})")
+            # 개발 환경에서는 더미 유저로 인증
+            if getattr(settings, 'DEBUG', False):
+                return self._get_dev_user()
             return None
 
     def _get_client_ip(self, request) -> str:
@@ -221,4 +234,26 @@ class JWTCookieAuthentication(JWTAuthentication):
 
         except Exception as e:
             logger.error(f"SSO user sync failed: {e}")
+            return None
+
+    def _get_dev_user(self):
+        """
+        개발 환경용 더미 사용자 반환.
+        DEBUG=True일 때만 사용됨.
+        """
+        try:
+            user, created = User.objects.get_or_create(
+                id=1,
+                defaults={
+                    'username': 'dev_user',
+                    'is_active': True,
+                    'is_staff': True,  # 개발 환경에서는 staff 권한 부여
+                    'is_superuser': False,
+                }
+            )
+            if created:
+                logger.info("Created development user (id=1)")
+            return user, None  # (user, token) 형태로 반환
+        except Exception as e:
+            logger.error(f"Dev user creation failed: {e}")
             return None

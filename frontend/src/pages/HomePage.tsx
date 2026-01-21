@@ -52,7 +52,7 @@ export default function HomePage() {
                     transition={{ duration: 0.6 }}
                 >
                     <motion.div
-                        className="text-6xl sm:text-9xl mb-4 sm:mb-6"
+                        className="text-7xl sm:text-[10rem] mb-4 sm:mb-8"
                         animate={{
                             y: [0, -10, 0],
                             rotate: [0, -5, 5, 0],
@@ -66,9 +66,14 @@ export default function HomePage() {
                         🍵
                     </motion.div>
 
-                    <h1 className="text-5xl sm:text-8xl font-black mb-4 sm:mb-8 tracking-tighter text-stone-800">
-                        DAGU
-                    </h1>
+                    <div className="relative inline-block">
+                        <h1 className="text-6xl sm:text-9xl font-black mb-6 sm:mb-10 tracking-tighter text-stone-800">
+                            DAGU
+                        </h1>
+                        <span className="absolute top-0 -right-8 sm:-right-16 text-xl sm:text-4xl font-bold text-matcha-500 rotate-12">
+                            beta
+                        </span>
+                    </div>
 
                     <p className="text-lg sm:text-3xl text-stone-600 max-w-2xl mx-auto leading-relaxed px-4">
                         악기 시세를 한눈에 비교하고 <br className="sm:hidden" />
@@ -77,7 +82,7 @@ export default function HomePage() {
                 </motion.div>
 
                 {/* 검색바 */}
-                <div className="w-full max-w-xl px-4 relative z-10">
+                <div className="w-full max-w-2xl px-4 relative z-10">
                     <SearchBar onSearch={handleSearch} />
                 </div>
 

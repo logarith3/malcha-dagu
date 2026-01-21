@@ -216,8 +216,33 @@ export default function ItemCard({
                             }}
                         />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center text-5xl opacity-30">
-                            🎸
+                        <div className={`
+                            w-full h-full flex flex-col items-center justify-center relative overflow-hidden 
+                            transition-colors duration-300
+                            ${source === 'mule' ? 'bg-blue-50 group-hover:bg-blue-100' :
+                                source === 'bunjang' ? 'bg-red-50 group-hover:bg-red-100' :
+                                    source === 'danggn' ? 'bg-orange-50 group-hover:bg-orange-100' :
+                                        source === 'joonggonara' ? 'bg-green-50 group-hover:bg-green-100' :
+                                            'bg-stone-50 group-hover:bg-stone-100'}
+                        `}>
+                            {/* 배경 데코레이션 */}
+                            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_50%_120%,currentColor_0%,transparent_50%)]" />
+
+                            {/* 텍스트 (소스별 영어 이름) */}
+                            <div className={`
+                                text-4xl sm:text-5xl font-black tracking-tighter z-10 select-none
+                                ${source === 'mule' ? 'text-blue-200' :
+                                    source === 'bunjang' ? 'text-red-200' :
+                                        source === 'danggn' ? 'text-orange-200' :
+                                            source === 'joonggonara' ? 'text-green-200' :
+                                                'text-stone-200'}
+                            `}>
+                                {source === 'mule' ? 'MULE' :
+                                    source === 'bunjang' ? 'BUNJANG' :
+                                        source === 'danggn' ? 'DAANGN' :
+                                            source === 'joonggonara' ? 'NAVER' :
+                                                'GUITAR'}
+                            </div>
                         </div>
                     )}
                     {/* 출처 뱃지 (Overlay) */}

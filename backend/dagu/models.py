@@ -79,6 +79,15 @@ class Instrument(models.Model):
         related_name='instruments',
         verbose_name='브랜드 (Relation)'
     )
+
+    parent = models.ForeignKey(
+        'self', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='children',
+        verbose_name='상위 악기 (부모)'
+    )
     
     name = models.CharField(max_length=500, verbose_name='모델명')
     category = models.CharField(
@@ -99,6 +108,17 @@ class Instrument(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    def get_all_descendants(self):
+        """
+        모든 하위 자식 악기(손자, 증손자 포함)를 재귀적으로 조회.
+        """
+        descendants = set()
+        children = self.children.all()
+        for child in children:
+            descendants.add(child)
+            descendants.update(child.get_all_descendants())
+        return list(descendants)
+
     class Meta:
         verbose_name = '악기'
         verbose_name_plural = '악기 목록'

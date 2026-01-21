@@ -34,6 +34,49 @@ def filter_user_item(
     return True
 
 
+def filter_user_item_by_brand(
+    query: str,
+    item_brand: str,
+) -> bool:
+    """
+    사용자 매물 브랜드 필터링.
+    
+    검색어에 명시된 브랜드와 매물의 악기 브랜드가 다르면 필터링.
+    예: 'Squier Strat' 검색 시, instrument.brand가 'Fender'인 매물은 제외.
+    
+    Args:
+        query: 사용자 검색어
+        item_brand: 매물에 연결된 악기의 브랜드 (instrument.brand)
+        
+    Returns:
+        True = 통과, False = 탈락
+    """
+    from .services.utils import extract_brand, is_known_brand
+    
+    # 1. 검색어에서 브랜드 추출
+    query_brand = extract_brand(query)
+    
+    # 2. 검색어에 명시적 브랜드가 없으면 필터 안 함 (통과)
+    if not query_brand or not is_known_brand(query_brand):
+        return True
+    
+    # 3. 매물에 브랜드가 없으면 필터 안 함 (통과)
+    if not item_brand:
+        return True
+    
+    # 4. 브랜드 일치 여부 확인 (대소문자 무시)
+    query_brand_lower = query_brand.lower()
+    item_brand_lower = item_brand.lower()
+    
+    # 브랜드가 일치하면 통과
+    if query_brand_lower in item_brand_lower or item_brand_lower in query_brand_lower:
+        return True
+    
+    # 브랜드가 다르면 탈락
+    logger.debug(f"[Brand Filter] 탈락: query_brand='{query_brand}', item_brand='{item_brand}'")
+    return False
+
+
 # =============================================================================
 # 필터 통계 (디버깅용)
 # =============================================================================
@@ -411,25 +454,30 @@ def build_exclusion_query(query: str) -> str:
 def calculate_match_score(query: str, title: str, image_url: str = None) -> int:
     """
     매칭 스코어 계산.
-    - 검색어 토큰 매칭률
-    - 이미지 유무
-    - 중고/신품 구분
+    - 검색어 토큰 매칭률 (핵심)
+    - 이미지 유무, 중고 여부, 정품 여부
     
     Returns:
         0-100 점수
     """
-    score = 50  # 기본 점수
+    score = 0
     
-    query_tokens = [t.lower() for t in query.split() if len(t) > 1]
+    # 중복 제거 (점수 뻥튀기 방지)
+    query_tokens = list(set([t.lower() for t in query.split() if len(t) > 1]))
     title_lower = title.lower()
     
     if not query_tokens:
-        return score
+        return 50  # 쿼리 없으면 기본 점수
     
-    # 토큰 매칭률 (최대 +30점)
+    # 토큰 매칭률 (최대 70점)
     matched = sum(1 for t in query_tokens if t in title_lower)
     match_ratio = matched / len(query_tokens)
-    score += int(match_ratio * 30)
+    
+    score += int(match_ratio * 70)
+    
+    # 모든 토큰이 다 포함되면 보너스 (+15점)
+    if match_ratio == 1.0:
+        score += 15
     
     # 이미지 있으면 +10점
     if image_url and 'http' in str(image_url):

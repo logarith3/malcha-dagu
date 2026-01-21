@@ -35,7 +35,7 @@ export default function MatchaBounceLoader({
                     <img
                         src={daguLoadingGif}
                         alt="다구 로딩"
-                        className="max-w-md max-h-md"
+                        className="w-64 sm:w-full sm:max-w-md h-auto object-contain"
                     />
                     {/* 로딩 텍스트 */}
                     <p className="mt-4 text-lg text-stone-600 font-medium">
