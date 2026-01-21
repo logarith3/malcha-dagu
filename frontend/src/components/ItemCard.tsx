@@ -286,7 +286,7 @@ export default function ItemCard({
                     {/* 하단: 가격 + 할인율 */}
                     <div className="flex items-end justify-between mt-auto">
                         <div>
-                            <div className="flex items-baseline gap-0.5 flex-wrap">
+                            <div className="flex items-baseline gap-0.5 whitespace-nowrap">
                                 <p className="text-lg sm:text-3xl font-black text-stone-900 tracking-tight leading-none">
                                     {formatPrice(item.lprice)}
                                 </p>
