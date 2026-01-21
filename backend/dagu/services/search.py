@@ -487,6 +487,7 @@ class SearchAggregatorService:
                 'score': calculate_match_score(query, title, item.instrument.image_url),
                 'extended_at': item.extended_at.isoformat() if item.extended_at else None,
                 'report_count': item.report_count,
+                'owner_id': item.owner_id,
             })
 
             # 신품 기준가 정보 (첫 번째 매물 기준)

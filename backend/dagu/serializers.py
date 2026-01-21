@@ -63,7 +63,7 @@ class UserItemSerializer(serializers.ModelSerializer):
             'id', 'instrument', 'instrument_detail', 'price', 'link',
             'source', 'source_display', 'title', 'is_active',
             'expired_at', 'extended_at', 'click_count', 'discount_rate',
-            'is_expired', 'is_owner', 'report_count',
+            'is_expired', 'is_owner', 'owner_id', 'report_count',
             'created_at', 'updated_at'
         ]
         read_only_fields = [

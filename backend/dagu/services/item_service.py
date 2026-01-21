@@ -46,9 +46,13 @@ def is_allowed_link(link: str) -> bool:
         return False
 
 
-def resolve_and_standardize_item(title: str, instrument_id: str | int | None = None) -> tuple[Instrument | None, str]:
+def resolve_and_standardize_item(title: str, instrument_id=None) -> tuple[Instrument | None, str]:
     """
     매물 등록 시 악기를 결정하고 제목을 표준화합니다.
+    
+    Args:
+        title: 매물 제목
+        instrument_id: Instrument 객체, ID (int/str), 또는 None
     
     Returns:
         (matched_instrument, standardized_title) 튜플
@@ -59,11 +63,17 @@ def resolve_and_standardize_item(title: str, instrument_id: str | int | None = N
     detected_brand = extract_brand(title)
     logger.error(f"========== [매물등록 시도] Title: '{title}' | Detected Brand: '{detected_brand}' ==========")
 
-    # 1. instrument ID가 전달되면 바로 사용
+    # 1. instrument_id 처리 (객체 또는 ID)
     if instrument_id:
-        instrument = Instrument.objects.filter(id=instrument_id).first()
-        if instrument:
-            logger.info(f"[매물 등록] instrument ID 사용: {instrument}")
+        # 이미 Instrument 객체인 경우
+        if isinstance(instrument_id, Instrument):
+            instrument = instrument_id
+            logger.info(f"[매물 등록] instrument 객체 직접 사용: {instrument}")
+        else:
+            # ID로 조회
+            instrument = Instrument.objects.filter(id=instrument_id).first()
+            if instrument:
+                logger.info(f"[매물 등록] instrument ID 사용: {instrument}")
 
     # 2. ID가 없으면 title로 자동 매칭
     if not instrument and title:
