@@ -357,109 +357,36 @@ class UserItemViewSet(viewsets.ModelViewSet):
         # 캐시 무효화 불필요: 유저 매물은 항상 실시간 DB 조회됨
         return response
 
-    # 허용된 중고거래 사이트 도메인
-    ALLOWED_DOMAINS = [
-        'mule.co.kr',           # 뮬
-        'bunjang.co.kr',        # 번개장터
-        'daangn.com',           # 당근마켓
-        'danggeun.com',         # 당근마켓 (구 도메인)
-        'cafe.naver.com',       # 중고나라 (네이버 카페)
-        'joongna.com',          # 중고나라
-        'secondhand.co.kr',     # 세컨핸드
-    ]
-
-    def _is_allowed_link(self, link: str) -> bool:
-        """허용된 도메인 및 프로토콜 확인 (XSS/Open Redirect 방지)"""
-        from urllib.parse import urlparse
-        try:
-            parsed = urlparse(link.lower())
-            # 프로토콜 검증: http/https만 허용 (javascript:, data: 등 차단)
-            if parsed.scheme not in ['http', 'https']:
-                logger.warning(f"Invalid protocol detected: {parsed.scheme}")
-                return False
-            # 도메인 검증
-            domain = parsed.netloc
-            if not domain:  # 도메인이 없으면 거부
-                return False
-            return any(allowed in domain for allowed in self.ALLOWED_DOMAINS)
-        except Exception as e:
-            logger.warning(f"URL parsing error: {e}")
-            return False
-
     def perform_create(self, serializer):
         """
-        매물 생성 시 악기 정보를 연결합니다.
-        1. instrument ID가 있으면 바로 사용 (검색 결과의 matched_instrument)
-        2. 없으면 title로 자동 매칭
+        매물 생성 시 악기 정보를 연결하고 제목을 표준화합니다.
+        - 링크 검증 및 중복 체크는 Serializer에서 처리됨
+        - 악기 매칭 및 제목 표준화 로직은 item_service로 위임
         """
         from rest_framework.exceptions import ValidationError
-        from .services.utils import (
-            normalize_brand, tokenize_query, expand_query_with_aliases,
-            find_best_matching_instruments
-        )
+        from .services.item_service import resolve_and_standardize_item
 
-        link = serializer.validated_data.get('link', '').strip()
-        instrument_id = serializer.validated_data.get('instrument')
         title = serializer.validated_data.get('title', '').strip()
-
-        # 허용된 사이트 검증
-        if not self._is_allowed_link(link):
-            raise ValidationError({
-                'link': '허용되지 않은 사이트입니다. (뮬, 번개장터, 당근마켓, 중고나라만 가능)'
-            })
-
-        # 링크 중복 체크 (활성 매물 중)
-        if UserItem.objects.filter(link=link, is_active=True).exists():
-            raise ValidationError({'link': '이미 등록된 매물입니다.'})
-
-        # 악기 결정
-        instrument = None
-
-        # 1. instrument ID가 전달되면 바로 사용
-        if instrument_id:
-            instrument = Instrument.objects.filter(id=instrument_id).first()
-            if instrument:
-                logger.info(f"[매물 등록] instrument ID 사용: {instrument}")
-
-        # 2. ID가 없으면 title로 자동 매칭
-        if not instrument and title:
-            search_query = normalize_brand(title)
-            query_tokens = tokenize_query(search_query)
-            expanded_queries = expand_query_with_aliases(search_query)
-
-            candidate_filter = models.Q()
-            for token in query_tokens:
-                if len(token) >= 2:
-                    candidate_filter |= models.Q(name__icontains=token)
-                    candidate_filter |= models.Q(brand__icontains=token)
-            for expanded in expanded_queries:
-                candidate_filter |= models.Q(name__icontains=expanded)
-
-            candidates = Instrument.objects.filter(candidate_filter).exclude(
-                brand__iexact='unknown'
-            )[:30]
-
-            if candidates.exists():
-                scored_matches = find_best_matching_instruments(
-                    query=title,
-                    instruments_qs=candidates,
-                    min_score=0.4,
-                )
-                if scored_matches:
-                    instrument = scored_matches[0][0]
-                    logger.info(
-                        f"[매물 등록] title 매칭: '{title}' -> "
-                        f"'{instrument.brand} {instrument.name}' (score={scored_matches[0][1]:.2f})"
-                    )
-
+        instrument_id = serializer.validated_data.get('instrument')
+        
+        # [Refactor] 서비스 레이어 위임: 매칭된 악기 찾기 및 제목 표준화
+        instrument, standardized_title = resolve_and_standardize_item(title, instrument_id)
+        
+        # 악기 미발견 시 등록 차단
         if not instrument:
             raise ValidationError({
                 'title': '해당하는 악기를 찾을 수 없습니다. 검색 결과 페이지에서 등록해주세요.'
             })
 
-        # owner_id 저장 (JWT user_id)
+        # owner_id 설정
         owner_id = self.request.user.id if self.request.user.is_authenticated else None
-        serializer.save(instrument=instrument, owner_id=owner_id)
+        
+        # 저장 (표준화된 제목 적용)
+        serializer.save(
+            instrument=instrument, 
+            owner_id=owner_id, 
+            title=standardized_title
+        )
 
     @action(detail=True, methods=['post'])
     def extend(self, request, pk=None):

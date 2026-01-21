@@ -24,6 +24,7 @@ from .utils import (
     extract_brand,
     normalize_brand,
     is_known_brand,
+    mask_sensitive_data,
 )
 
 logger = logging.getLogger(__name__)
@@ -120,7 +121,7 @@ class SearchAggregatorService:
             }
         else:
             # DB 미매칭 검색어 로깅 (자주 검색되지만 DB에 없는 악기 추적)
-            SearchMissLog.log_miss(query)
+            SearchMissLog.log_miss(mask_sensitive_data(query))
 
         return {
             'query': query,

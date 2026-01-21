@@ -19,6 +19,24 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def mask_sensitive_data(text: str) -> str:
+    """
+    문자열 내 개인정보(전화번호, 이메일) 마스킹
+    """
+    if not text:
+        return text
+    
+    # 전화번호 (010-1234-5678, 01012345678)
+    phone_pattern = r'01[016789]-?\d{3,4}-?\d{4}'
+    text = re.sub(phone_pattern, '[PHONE]', text)
+    
+    # 이메일
+    email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+    text = re.sub(email_pattern, '[EMAIL]', text)
+    
+    return text
+
+
 # =============================================================================
 # Cached Config Accessors (성능 최적화)
 # =============================================================================
@@ -359,6 +377,20 @@ def calculate_instrument_match_score(query: str, instrument: Instrument) -> floa
     brand_normalized = normalize_search_term(brand)
     full_name = f"{brand} {name}".strip()
     full_normalized = normalize_search_term(full_name)
+
+    # =========================================================================
+    # Tier -1: 브랜드 불일치 필터링 (Brand Mismatch Hard Filter)
+    # =========================================================================
+    # 쿼리에서 명확한 브랜드가 감지되었는데, 악기 브랜드와 다르면 제외
+    # 예: "Gibson Les Paul" 검색 시 "Epiphone Les Paul"은 제외되어야 함
+    detected_brand = extract_brand(query)
+    if detected_brand and is_known_brand(detected_brand):
+        # 감지된 브랜드가 악기 브랜드(정규화됨)에 포함되지 않으면 불일치로 간주
+        # (예: detected="gibson", brand="epiphone" -> 불일치)
+        # (예: detected="fender", brand="squier by fender" -> 일치 허용)
+        if brand_normalized and normalize_search_term(detected_brand) not in brand_normalized:
+            logger.debug(f"[Score 0.0] 브랜드 불일치: 쿼리('{detected_brand}') != 악기('{brand}')")
+            return 0.0
 
     # =========================================================================
     # Tier 0: 정규화된 이름 정확 일치 (최우선)

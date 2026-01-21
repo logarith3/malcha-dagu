@@ -88,6 +88,22 @@ class UserItemCreateSerializer(serializers.ModelSerializer):
             'instrument': {'required': False, 'allow_null': True}  # 백엔드에서 자동 매칭
         }
 
+    def validate_link(self, value):
+        from .services.item_service import is_allowed_link
+        
+        link = value.strip()
+        
+        # 1. 허용된 사이트 검증
+        if not is_allowed_link(link):
+            raise serializers.ValidationError('허용되지 않은 사이트입니다. (뮬, 번개장터, 당근마켓, 중고나라만 가능)')
+            
+        # 2. 중복 체크 (활성 매물 중) - create 시에만 체크
+        if not self.instance:
+            if UserItem.objects.filter(link=link, is_active=True).exists():
+                raise serializers.ValidationError('이미 등록된 매물입니다.')
+                
+        return link
+
 
 class NaverItemSerializer(serializers.Serializer):
     """네이버 쇼핑 API 응답 시리얼라이저"""

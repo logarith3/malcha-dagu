@@ -6,9 +6,11 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 from django.views.generic import TemplateView
 
+import os
+
 urlpatterns = [
     # 1. 관리자 및 API 주소 (먼저 검사)
-    path('malcha_admin_site/', admin.site.urls),
+    path(os.getenv('ADMIN_URL', 'admin/'), admin.site.urls),
     path('api/', include('dagu.urls')),
 ]
 
