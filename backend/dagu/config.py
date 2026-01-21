@@ -62,6 +62,7 @@ class CategoryConfig:
         '스트랫': 'Stratocaster',
         '스트렛': 'Stratocaster',
         '스트라토캐스터': 'Stratocaster',
+        '스트라토': 'Stratocaster',
         '스텐다드': 'Standard',
         '스탠다드': 'Standard',
         'tele': 'Telecaster',

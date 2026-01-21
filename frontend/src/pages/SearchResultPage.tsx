@@ -288,7 +288,7 @@ export default function SearchResultPage() {
                                         beta
                                     </span>
                                 </motion.button>
-                                <div className="flex-1 max-w-2xl">
+                                <div className="flex-1 w-full sm:max-w-2xl">
                                     <SearchBar
                                         onSearch={handleSearch}
                                         isLoading={isLoading}
@@ -688,7 +688,6 @@ function RegisterModal({ query, matchedInstrument, onClose }: RegisterModalProps
                             value={link}
                             onChange={(e) => setLink(e.target.value)}
                             className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-matcha-400 focus:ring-2 focus:ring-matcha-100 outline-none transition-all"
-                            placeholder="예: mule.co.kr/..."
                             required
                         />
 
