@@ -184,7 +184,7 @@ export default function CategoryPage() {
 
                     {/* Footer */}
                     <footer className="mt-12 py-6 text-center text-xs text-stone-400 border-t border-stone-100">
-                        <p>* 네이버쇼핑 가격 정보는 실시간 조회 결과이며, 실제 판매가와 다를 수 있습니다.</p>
+
                     </footer>
                 </motion.div>
             )}

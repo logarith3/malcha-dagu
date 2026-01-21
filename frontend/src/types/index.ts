@@ -100,6 +100,7 @@ export interface MergedUserItem {
     instrument_brand: string;
     extended_at: string | null;
     report_count: number;
+    owner_id: number | null;
 }
 
 // 신고 사유 타입

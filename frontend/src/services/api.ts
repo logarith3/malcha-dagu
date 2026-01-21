@@ -111,9 +111,14 @@ export async function reportUserItem(id: string, data: {
     return response.data;
 }
 
+// ... existing code ...
 export async function updateItemPrice(id: string, price: number): Promise<UserItem> {
     const response = await api.post<UserItem>(`/items/${id}/update_price/`, { price });
     return response.data;
+}
+
+export async function deleteUserItem(id: string): Promise<void> {
+    await api.delete(`/items/${id}/`);
 }
 
 // =============================================================================

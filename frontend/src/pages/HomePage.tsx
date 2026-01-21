@@ -126,7 +126,7 @@ export default function HomePage() {
             {/* 푸터 */}
             <footer className="py-8 text-center text-sm text-stone-400 mt-auto space-y-1">
                 <p>© 2026 DAGU. 비영리로 운영되는 악기 시세 비교 서비스</p>
-                <p className="text-xs text-stone-300">* 네이버쇼핑 가격 정보는 실시간 조회 결과이며, 실제 판매가와 다를 수 있습니다.</p>
+
             </footer>
         </div>
     );

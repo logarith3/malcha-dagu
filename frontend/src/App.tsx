@@ -8,6 +8,8 @@ import HomePage from './pages/HomePage';
 import SearchResultPage from './pages/SearchResultPage';
 import CategoryPage from './pages/CategoryPage';
 
+import Footer from './components/Footer';
+
 // React Query 클라이언트 설정
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,15 +26,20 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/search" element={<SearchResultPage />} />
-          {/* Brand & Category Routes */}
-          <Route path="/brand/:brand" element={<CategoryPage />} />
-          <Route path="/category/:brand" element={<CategoryPage />} />
-          <Route path="/category/:brand/:model" element={<CategoryPage />} />
-          <Route path="/category/:brand/:model/:submodel" element={<CategoryPage />} />
-        </Routes>
+        <div className="flex flex-col min-h-screen">
+          <main className="flex-grow">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/search" element={<SearchResultPage />} />
+              {/* Brand & Category Routes */}
+              <Route path="/brand/:brand" element={<CategoryPage />} />
+              <Route path="/category/:brand" element={<CategoryPage />} />
+              <Route path="/category/:brand/:model" element={<CategoryPage />} />
+              <Route path="/category/:brand/:model/:submodel" element={<CategoryPage />} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
       </BrowserRouter>
     </QueryClientProvider>
   );

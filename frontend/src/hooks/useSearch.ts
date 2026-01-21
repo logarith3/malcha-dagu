@@ -120,6 +120,18 @@ export function useUpdateItemPrice() {
     });
 }
 
+export function useDeleteUserItem() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: api.deleteUserItem,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['search'] });
+            queryClient.invalidateQueries({ queryKey: ['userItems'] });
+        },
+    });
+}
+
 // =============================================================================
 // AI Description Hook
 // =============================================================================

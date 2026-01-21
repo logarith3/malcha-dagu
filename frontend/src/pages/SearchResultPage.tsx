@@ -16,7 +16,7 @@ import SearchBar from '../components/SearchBar';
 import MatchaBounceLoader from '../components/MatchaBounceLoader';
 import ItemCard from '../components/ItemCard';
 import CategoryHeader from '../components/CategoryHeader';
-import { useSearch, useTrackItemClick, useCreateUserItem, useExtendUserItem, useReportItem, useUpdateItemPrice } from '../hooks/useSearch';
+import { useSearch, useTrackItemClick, useCreateUserItem, useExtendUserItem, useReportItem, useUpdateItemPrice, useDeleteUserItem } from '../hooks/useSearch';
 import { useAuth } from '../hooks/useAuth';
 import type { NaverItem, MergedUserItem, ReportReason } from '../types';
 
@@ -76,7 +76,7 @@ export default function SearchResultPage() {
     const [showRegisterModal, setShowRegisterModal] = useState(false);
 
     // SSO 인증 상태 확인
-    const { isLoggedIn } = useAuth();
+    const { isLoggedIn, userId } = useAuth();
 
     // React Query로 검색
     const { data, isLoading, isError, error } = useSearch(query, {
@@ -94,6 +94,24 @@ export default function SearchResultPage() {
 
     // 가격 업데이트 기능
     const updatePrice = useUpdateItemPrice();
+
+    // 삭제 기능
+    const deleteUserItem = useDeleteUserItem();
+
+    const handleDeleteItem = (itemId: number | string) => {
+        if (window.confirm('정말 이 매물을 삭제하시겠습니까?')) {
+            deleteUserItem.mutate(String(itemId), {
+                onSuccess: () => {
+                    alert('매물이 삭제되었습니다.');
+                },
+                onError: () => {
+                    alert('삭제 중 오류가 발생했습니다.');
+                }
+            });
+        }
+    };
+
+
 
     // 최소 로딩 시간 보장
     useEffect(() => {
@@ -222,11 +240,18 @@ export default function SearchResultPage() {
         });
     };
 
-    // 소유자 여부 확인 (is_owner 필드가 있으면 사용, 없으면 false)
+    // 소유자 여부 확인 (is_owner 필드 또는 owner_id 비교)
     const isItemOwner = (item: NaverItem | MergedUserItem): boolean => {
         if (!isLoggedIn) return false;
-        // UserItemSerializer에서 is_owner 필드 제공 시 사용
+
+        // 1. owner_id가 있으면 현재 로그인 유저와 비교
+        if ('owner_id' in item && item.owner_id !== null && userId !== null) {
+            return item.owner_id === userId;
+        }
+
+        // 2. 백엔드에서 제공한 is_owner 필드 사용 (fallback)
         if ('is_owner' in item) return (item as { is_owner: boolean }).is_owner;
+
         return false;
     };
 
@@ -358,6 +383,7 @@ export default function SearchResultPage() {
                                                 onExtend={'id' in item ? () => handleExtendItem(item.id) : undefined}
                                                 onReport={'id' in item && item.source !== 'naver' ? (reason) => handleReportItem(item.id, reason) : undefined}
                                                 onUpdatePrice={'id' in item && item.source !== 'naver' ? (price) => handleUpdatePrice(item.id, price) : undefined}
+                                                onClickDelete={'id' in item && item.source !== 'naver' ? () => handleDeleteItem(item.id) : undefined}
                                             />
                                         </motion.div>
                                     ))}
@@ -443,7 +469,7 @@ export default function SearchResultPage() {
 
             {/* 푸터 */}
             <footer className="mt-12 py-6 text-center text-xs text-stone-400 border-t border-stone-100">
-                <p>* 네이버쇼핑 가격 정보는 실시간 조회 결과이며, 실제 판매가와 다를 수 있습니다.</p>
+
             </footer>
         </div>
     );
@@ -524,7 +550,21 @@ function RegisterModal({ query, matchedInstrument, onClose }: RegisterModalProps
 
     // API Hook
     const createUserItem = useCreateUserItem();
+    const deleteUserItem = useDeleteUserItem();
     const queryClient = useQueryClient();
+
+    const handleDeleteItem = (id: number | string) => {
+        if (window.confirm('정말 이 매물을 삭제하시겠습니까?')) {
+            deleteUserItem.mutate(String(id), {
+                onSuccess: () => {
+                    alert('삭제되었습니다.');
+                },
+                onError: () => {
+                    alert('삭제 중 오류가 발생했습니다.');
+                }
+            });
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -24,9 +24,10 @@ interface ItemCardProps {
     onExtend?: () => void;
     onReport?: (reason: ReportReason, detail?: string) => void;
     onUpdatePrice?: (newPrice: number) => void;
+    onClickDelete?: () => void;
 }
 
-// 출처별 스타일
+// 출처별 스타일 및 허용 도메인
 const SOURCE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
     naver: { bg: 'bg-green-100', text: 'text-green-700', label: '네이버' },
     mule: { bg: 'bg-blue-100', text: 'text-blue-700', label: '뮬' },
@@ -35,6 +36,12 @@ const SOURCE_STYLES: Record<string, { bg: string; text: string; label: string }>
     danggn: { bg: 'bg-orange-100', text: 'text-orange-700', label: '당근' },
     other: { bg: 'bg-stone-100', text: 'text-stone-700', label: '기타' },
 };
+
+const ALLOWED_DOMAINS = [
+    'mule.co.kr', 'bunjang.co.kr', 'daangn.com', 'danggeun.com',
+    'cafe.naver.com', 'joongna.com', 'secondhand.co.kr',
+    'naver.com' // 네이버 쇼핑 링크 포괄 허용
+];
 
 function formatPrice(price: number): string {
     return new Intl.NumberFormat('ko-KR').format(price);
@@ -46,17 +53,20 @@ function calculateDiscount(price: number, referencePrice: number): number {
 }
 
 function isValidUrl(url: string): boolean {
-    /**
-     * URL 프로토콜 검증 (XSS 방지)
-     * javascript:, data:, vbscript: 등 위험한 프로토콜 차단
-     */
+    if (!url) return false;
     try {
         const parsed = new URL(url);
-        return ['http:', 'https:'].includes(parsed.protocol);
+        // 1. 프로토콜 검증 (XSS 방지)
+        if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+
+        // 2. 도메인 화이트리스트 검증 (Open Redirect 방지)
+        // 네이버 아이템 등 신뢰할 수 있는 도메인만 이동 허용
+        return ALLOWED_DOMAINS.some(domain => parsed.hostname.includes(domain));
     } catch {
         return false;
     }
 }
+
 
 // 기타 피크 순위 아이콘
 function PickIcon({ rank }: { rank: number }) {
@@ -102,6 +112,7 @@ export default function ItemCard({
     onExtend,
     onReport,
     onUpdatePrice,
+    onClickDelete,
 }: ItemCardProps) {
     const [showReportModal, setShowReportModal] = useState(false);
     const [showPriceModal, setShowPriceModal] = useState(false);
@@ -316,21 +327,25 @@ export default function ItemCard({
                         {/* 버튼들 - z-20으로 링크 위에 배치 */}
                         <div className="relative z-20 flex items-center gap-2">
                             {/* 연장 버튼 (본인 매물만) */}
+                            {/* 연장 버튼 (본인 매물만) - 초록색 */}
                             {isOwner && (
                                 <button
                                     onClick={handleExtend}
-                                    className="px-3 py-1.5 rounded-full bg-matcha-100 text-matcha-700 text-xs font-semibold hover:bg-matcha-200 transition-colors"
+                                    className="w-8 h-8 rounded-full bg-matcha-100 text-matcha-600 flex items-center justify-center hover:bg-matcha-200 transition-colors"
+                                    title="기간 연장"
                                 >
-                                    연장
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
                                 </button>
                             )}
 
-                            {/* 유저 매물: 가격 업데이트 버튼 (파란색) */}
-                            {isUserItem && !isOwner && onUpdatePrice && (
+                            {/* 유저 매물: 가격 업데이트 버튼 (파란색) - 본인도 가능 */}
+                            {isUserItem && onUpdatePrice && (
                                 <button
                                     onClick={handlePriceClick}
                                     className="w-8 h-8 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center hover:bg-blue-200 transition-colors"
-                                    title="가격 업데이트"
+                                    title="가격 업데이트/수정"
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -347,6 +362,22 @@ export default function ItemCard({
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </button>
+                            )}
+
+                            {/* 본인 매물: 삭제 버튼 (빨간색) */}
+                            {isOwner && onClickDelete && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onClickDelete();
+                                    }}
+                                    className="w-8 h-8 rounded-full bg-red-100 text-red-500 flex items-center justify-center hover:bg-red-200 transition-colors"
+                                    title="삭제하기"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
                                 </button>
                             )}
