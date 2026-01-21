@@ -10,7 +10,7 @@ import os
 
 urlpatterns = [
     # 1. 관리자 및 API 주소 (먼저 검사)
-    path(os.getenv('ADMIN_URL', 'admin/'), admin.site.urls),
+    path(os.getenv('ADMIN_URL', 'malcha_admin_site/'), admin.site.urls),
     path('api/', include('dagu.urls')),
 ]
 
