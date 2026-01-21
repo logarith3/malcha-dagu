@@ -57,11 +57,7 @@ function isValidUrl(url: string): boolean {
     try {
         const parsed = new URL(url);
         // 1. 프로토콜 검증 (XSS 방지)
-        if (!['http:', 'https:'].includes(parsed.protocol)) return false;
-
-        // 2. 도메인 화이트리스트 검증 (Open Redirect 방지)
-        // 네이버 아이템 등 신뢰할 수 있는 도메인만 이동 허용
-        return ALLOWED_DOMAINS.some(domain => parsed.hostname.includes(domain));
+        return ['http:', 'https:'].includes(parsed.protocol);
     } catch {
         return false;
     }

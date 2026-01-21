@@ -288,52 +288,76 @@ class CategoryConfig:
     ]
     # 알려진 브랜드 목록 (브랜드 감지용)
     KNOWN_BRANDS = [
-        # ---------------------------------------------------------
-        # 1. Electric Guitars (Major & High-end)
-        # ---------------------------------------------------------
-        'fender', 'gibson', 'prs', 'ibanez', 'esp', 'jackson', 'charvel',
-        'schecter', 'suhr', 'musicman', 'g&l', 'yamaha', 'kramer',
-        'gretsch', 'rickenbacker', 'danelectro', 'tom anderson', 'james tyler',
-        'mayones', 'strandberg', 'aristides', 'kiesel', 'godin', 'reverend',
-        'duesenberg', 'heritage', 'bacchus', 'momose', 'fgn',  # Fujigen
+         # ---------------------------------------------------------
+    # 1. Electric Guitars (Major & High-end)
+    # ---------------------------------------------------------
+    'fender', 'gibson', 'prs', 'ibanez', 'esp', 'jackson', 'charvel',
+    'schecter', 'suhr', 'musicman', 'g&l', 'yamaha', 'kramer',
+    'gretsch', 'rickenbacker', 'danelectro', 'tom anderson', 'james tyler',
+    'mayones', 'strandberg', 'aristides', 'kiesel', 'godin', 'reverend',
+    'duesenberg', 'heritage', 'bacchus', 'momose', 'fgn', 'collings', 'fano',
 
-        # ---------------------------------------------------------
-        # 2. Sub & Budget Brands (Cost-effective)
-        # ---------------------------------------------------------
-        'squier', 'epiphone', 'ltd', 'sterling', 'tribute', 'edwards',
-        'grassroots', 'tokai', 'burny', 'greco', 'aria pro ii',
-        'harley benton', 'sire', 'cort', 'swing', 'dame', 'hex', 'spear',
-        'uno', 'corona', 'volcan',
+    # ---------------------------------------------------------
+    # 2. Sub & Budget Brands (Cost-effective)
+    # ---------------------------------------------------------
+    'squier', 'epiphone', 'ltd', 'sterling', 'tribute', 'edwards',
+    'grassroots', 'tokai', 'burny', 'greco', 'aria pro ii',
+    'harley benton', 'sire', 'cort', 'swing', 'dame', 'hex', 'spear',
+    'uno', 'corona', 'volcan',
 
-        # ---------------------------------------------------------
-        # 3. Acoustic Guitars
-        # ---------------------------------------------------------
-        'taylor', 'martin', 'gopherwood', 'crafter', 'lakewood', 'maton',
-        'cole clark', 'sigma', 'guild', 'takamine', 'ovation', 'lowden',
-        'mcpherson', 'breedlove', 'seagull', 'yamaha', 'cort',
+    # ---------------------------------------------------------
+    # 3. Semi-Hollow/Hollow-Body Guitars
+    # ---------------------------------------------------------
+    'collings', 'fano',
 
-        # ---------------------------------------------------------
-        # 4. Bass Specific (High-end & Popular)
-        # ---------------------------------------------------------
-        'warwick', 'spector', 'sandberg', 'dingwall', 'fodera', 'sadowsky',
-        'lakland', 'mtd', 'kensmith', 'atelier z', 'moon',
+    # ---------------------------------------------------------
+    # 4. Acoustic Guitars
+    # ---------------------------------------------------------
+    'taylor', 'martin', 'gopherwood', 'crafter', 'lakewood', 'maton',
+    'cole clark', 'sigma', 'guild', 'takamine', 'ovation', 'lowden',
+    'mcpherson', 'breedlove', 'seagull', 'yamaha', 'cort', 'collings',
+    'santa cruz', 'larrivée', 'furch',
 
-        # ---------------------------------------------------------
-        # 5. Amps & Modelers (Digital/Analog)
-        # ---------------------------------------------------------
-        'marshall', 'vox', 'orange', 'mesa', 'ampeg', 'fender', 'peavey',
-        'engl', 'bogner', 'friedman', 'soldano', 'blackstar', 'hughes & kettner',
-        'kemper', 'fractal', 'line 6', 'neural dsp', 'headrush', 'boss', 'roland',
-        'positive grid', 'dv mark', 'markbass', 'aguilar', 'darkglass',
+    # ---------------------------------------------------------
+    # 5. Hybrid/Acoustic-Electric Guitars
+    # ---------------------------------------------------------
+    'godin', 'taylor', 'michael kelly',
 
-        # ---------------------------------------------------------
-        # 6. Effects Pedals (Stompboxes)
-        # ---------------------------------------------------------
-        'boss', 'tc electronic', 'strymon', 'electro-harmonix', 'mxr', 'dunlop',
-        'digitech', 'zoom', 'mooer', 'nux', 'jhs', 'keeley', 'walrus audio',
-        'chase bliss', 'eventide', 'meris', 'earthquaker devices', 'analogman',
-        'fulltone', 'xotic', 'vemuram', 'klon', 'catalinbread', 'mad professor',
-        'source audio', 'free the tone', 'vertex', 'hotone', 'valeton',
+    # ---------------------------------------------------------
+    # 6. Bass Specific (High-end & Popular)
+    # ---------------------------------------------------------
+    'warwick', 'spector', 'sandberg', 'dingwall', 'fodera', 'sadowsky',
+    'lakland', 'mtd', 'kensmith', 'atelier z', 'moon', 'kiesel',
+
+    # ---------------------------------------------------------
+    # 7. Amps & Modelers (Digital/Analog)
+    # ---------------------------------------------------------
+    'marshall', 'vox', 'orange', 'mesa', 'ampeg', 'fender', 'peavey',
+    'engl', 'bogner', 'friedman', 'soldano', 'blackstar', 'hughes & kettner',
+    'kemper', 'fractal', 'line 6', 'neural dsp', 'headrush', 'boss', 'roland',
+    'positive grid', 'dv mark', 'markbass', 'aguilar', 'darkglass',
+    'laney', 'supro', 'randall',
+
+    # ---------------------------------------------------------
+    # 8. Effects Pedals (Stompboxes)
+    # ---------------------------------------------------------
+    'boss', 'tc electronic', 'strymon', 'electro-harmonix', 'mxr', 'dunlop',
+    'digitech', 'zoom', 'mooer', 'nux', 'jhs', 'keeley', 'walrus audio',
+    'chase bliss', 'eventide', 'meris', 'earthquaker devices', 'analogman',
+    'fulltone', 'xotic', 'vemuram', 'klon', 'catalinbread', 'mad professor',
+    'source audio', 'free the tone', 'vertex', 'hotone', 'valeton',
+
+    # ---------------------------------------------------------
+    # 9. Cable Brands (Premium)
+    # ---------------------------------------------------------
+    'mogami', 'evidence audio', 'pete cornish', 'george l\'s', 'van damme',
+    'lava cable', 'analysis plus',
+
+    # ---------------------------------------------------------
+    # 10. Pedalboard Systems
+    # ---------------------------------------------------------
+    'pedaltrain', 'rockboard', 'temple audio', 'aclam', 'gator cases',
+    'friedman', 'voodoo lab', 'boss',
     ]
 
     # 한글 브랜드명 매핑 (유저가 검색할 만한 변칙 표기 포함)
@@ -475,6 +499,74 @@ class CategoryConfig:
         '버텍스': 'vertex',
         '핫톤': 'hotone',
         '발레톤': 'valeton',
+        '디앤젤리코': 'd\'angelico',
+        '노보': 'novo',
+        '파노': 'fano',
+
+    # --- Acoustic (Premium/Boutique) ---
+        '부르주아': 'bourgeois', '부르조아': 'bourgeois',
+        '헤드웨이': 'headway',
+        '아이리스': 'iris',
+        '산타크루즈': 'santa cruz',  # 검증용 (기존 리스트에 없음)
+        '라리베': 'larrivée', '라리비': 'larrivée',
+        '헤스앤달튼': 'huss & dalton',
+        '갤러거': 'gallagher',
+
+    # --- Classical/Nylon Guitar ---
+        '코르도바': 'cordoba',
+        '콘데에르마노스': 'conde hermanos',
+        '아스투리아스': 'asturias',
+        '마누엘로드리게즈': 'manuel rodriguez',
+
+    # --- Innovative/Experimental Electric ---
+        '오름스비': 'ormsby', '오므스비': 'ormsby',
+        '바라구에르': 'balaguer',
+        '내시': 'nash', '나시': 'nash',
+        '바움': 'baum',
+        '콜링스': 'collings',
+        '디앤젤리코': 'd\'angelico',  # 전자 기타용 추가
+
+    # --- Bass (Additional) ---
+        '스털링바이뮤직맨': 'sterling by music man',
+
+    # --- Amps (Additional) ---
+        '라니': 'laney', '레이니': 'laney',
+        '수프로': 'supro',
+
+    # --- Effects Pedals (Additional) ---
+        '피그트로닉스': 'pigtronix', '픽트로닉스': 'pigtronix',
+        '닥터사이언티스트': 'dr. scientist',
+        '드레드박스': 'dreadbox',
+        '헝그리로봇': 'hungry robot',
+
+    # --- Cable Brands (NEW) ---
+        '모가미': 'mogami',
+        '에비던스오디오': 'evidence audio', '에비던스': 'evidence audio',
+        '피트콘니시': 'pete cornish',
+        '조지엘즈': 'george l\'s', '조지엘': 'george l\'s',
+        '반댐': 'van damme',
+        '라바케이블': 'lava cable',
+
+    # --- Pedalboard Systems (NEW) ---
+        '페달트레인': 'pedaltrain',
+        '락보드': 'rockboard',
+        '템플오디오': 'temple audio',
+        '아클람': 'aclam',
+        '게이터': 'gator cases',
+        '부두랩': 'voodoo lab', '부두래브': 'voodoo lab',
+
+    # --- Korean Domestic Brands (선택사항) ---
+        '성음': 'crafter',  # 성음 = Crafter (한국)
+        '크래프터': 'crafter',
+        '데임': 'dame',
+        '콜트': 'colt',  # 기존에 '콜트': 'cort'로 되어있음 (확인 필요)
+        '스윙': 'swing',  # 기존에 있음
+        '가와사미': 'kawasamy', '덱스터': 'dexter',
+        '프라임기타': 'prime',
+        '지우드': 'gwood',
+        '피어리스': 'peerless',
+        '삼익': 'samick',
+        '뮤즈': 'muz',
     }
     
   
