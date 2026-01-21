@@ -202,7 +202,7 @@ export default function ItemCard({
                         href={item.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        referrerPolicy="no-referrer-when-downgrade"
+                        referrerPolicy="no-referrer"
                         className="absolute inset-0 z-10 rounded-2xl sm:rounded-[32px]"
                         aria-label="상품 페이지로 이동"
                         onClick={onClick}
