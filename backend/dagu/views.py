@@ -75,7 +75,7 @@ class SearchView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'search'
 
-    CACHE_TTL = 60 * 3  # 3분 (네이버 결과만 캐싱)
+    CACHE_TTL = 60 * 30  # 30분 (네이버 결과만 캐싱, 유저 매물은 실시간)
 
     def get(self, request):
         query = request.query_params.get('q', '').strip()
