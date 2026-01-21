@@ -557,13 +557,21 @@ function RegisterModal({ query, matchedInstrument, onClose }: RegisterModalProps
                 const error = err as AxiosError<ApiErrorResponse>;
                 console.error('Failed to register item:', error);
 
+                // [추가] 429 Too Many Requests 처리
+                if (error.response?.status === 429) {
+                    alert('너무 많은 요청을 보냈습니다.\n잠시 후(약 1분 뒤) 다시 시도해주세요.');
+                    return;
+                }
+
                 let errorMsg = '등록에 실패했습니다.';
                 try {
                     const data = error.response?.data;
                     if (data) {
                         // JSON 문자열로 변환 후 파싱
                         const jsonStr = JSON.stringify(data);
-                        if (jsonStr.includes('이미 등록된')) {
+                        if (jsonStr.includes('악기를 찾을 수 없습니다') || jsonStr.includes('해당하는 악기')) {
+                            errorMsg = '등록된 악기 정보를 찾을 수 없습니다.\n\n정확한 악기 이름으로 검색한 후 등록해주세요.\n(예: "펜더 스트랫" → "Fender Stratocaster")';
+                        } else if (jsonStr.includes('이미 등록된')) {
                             errorMsg = '이미 등록된 매물입니다.';
                         } else if (jsonStr.includes('허용되지 않은')) {
                             errorMsg = '허용되지 않은 사이트입니다.\n(뮬, 번개장터, 당근마켓, 중고나라만 등록 가능)';

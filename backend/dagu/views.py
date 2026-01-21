@@ -276,8 +276,8 @@ class InstrumentViewSet(viewsets.ModelViewSet):
 # =============================================================================
 
 class CreateItemThrottle(UserRateThrottle):
-    """매물 등록 스팸 방지 (분당 3회)"""
-    rate = '3/min'
+    """매물 등록 스팸 방지 (분당 10회로 완화)"""
+    rate = '10/min'
 
 
 class UserItemViewSet(viewsets.ModelViewSet):
