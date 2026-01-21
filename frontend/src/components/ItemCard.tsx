@@ -286,10 +286,11 @@ export default function ItemCard({
                     {/* 하단: 가격 + 할인율 */}
                     <div className="flex items-end justify-between mt-auto">
                         <div>
-                            <div className="flex items-baseline gap-1">
-                                <p className="text-lg sm:text-3xl font-black text-stone-900 tracking-tight">
-                                    {formatPrice(item.lprice)}<span className="text-xs sm:text-base font-bold text-stone-400 ml-0.5 sm:ml-1">원</span>
+                            <div className="flex items-baseline gap-0.5 flex-wrap">
+                                <p className="text-lg sm:text-3xl font-black text-stone-900 tracking-tight leading-none">
+                                    {formatPrice(item.lprice)}
                                 </p>
+                                <span className="text-xs sm:text-sm font-bold text-stone-400">원</span>
                             </div>
 
                             {discount > 0 && (
@@ -382,12 +383,6 @@ export default function ItemCard({
                                 </button>
                             )}
 
-                            {/* 화살표 아이콘 */}
-                            <div className="w-8 h-8 rounded-full bg-stone-50 flex items-center justify-center text-stone-400 group-hover:bg-matcha-50 group-hover:text-matcha-600 transition-colors">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                                </svg>
-                            </div>
                         </div>
                     </div>
                 </div>
