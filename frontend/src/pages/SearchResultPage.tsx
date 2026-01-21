@@ -550,21 +550,7 @@ function RegisterModal({ query, matchedInstrument, onClose }: RegisterModalProps
 
     // API Hook
     const createUserItem = useCreateUserItem();
-    const deleteUserItem = useDeleteUserItem();
     const queryClient = useQueryClient();
-
-    const handleDeleteItem = (id: number | string) => {
-        if (window.confirm('정말 이 매물을 삭제하시겠습니까?')) {
-            deleteUserItem.mutate(String(id), {
-                onSuccess: () => {
-                    alert('삭제되었습니다.');
-                },
-                onError: () => {
-                    alert('삭제 중 오류가 발생했습니다.');
-                }
-            });
-        }
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
