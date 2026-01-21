@@ -62,6 +62,7 @@ export interface SearchResult {
     query: string;
     search_query: string;  // 정규화된 검색어 (외부 링크용)
     total_count: number;
+    is_valid_query?: boolean;
     reference: {
         name: string;
         price: number;

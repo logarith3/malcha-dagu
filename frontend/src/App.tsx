@@ -26,7 +26,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="flex flex-col min-h-screen">
+        <div className="flex flex-col min-h-screen w-full overflow-x-hidden">
           <main className="flex-grow">
             <Routes>
               <Route path="/" element={<HomePage />} />

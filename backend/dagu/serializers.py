@@ -131,6 +131,7 @@ class SearchResultSerializer(serializers.Serializer):
     query = serializers.CharField()
     search_query = serializers.CharField()  # 정규화된 검색어 (외부 링크용)
     total_count = serializers.IntegerField()
+    is_valid_query = serializers.BooleanField(default=True)
 
     # 신품 정보
     reference = serializers.DictField(required=False)

@@ -132,7 +132,70 @@ class SearchAggregatorService:
             'items': all_items,
             'naver_items': naver_items,
             'user_items': user_items,
+            'is_valid_query': True,
         }
+
+    def _is_whitelisted_query(self, query: str) -> bool:
+        """
+        검색어가 악기 관련 키워드를 포함하는지 확인 (화이트리스트 검증).
+        브랜드명, 카테고리명, 악기명 등이 포함되어야 API 호출을 허용.
+        """
+        query_lower = query.lower().strip()
+        if not query_lower:
+            return False
+
+        from ..config import CategoryConfig
+        
+        # 0. [사용자 커스텀] 화이트리스트 최우선 확인
+        custom_whitelist = getattr(CategoryConfig, 'CUSTOM_WHITELIST_KEYWORDS', [])
+        for kw in custom_whitelist:
+            if kw and kw in query_lower:
+                logger.debug(f"[Whitelist] 통과: 커스텀 키워드 감지 '{kw}'")
+                return True
+
+        # 1. 알려진 브랜드 확인 (extract_brand는 너무 관대하므로 is_known_brand로 재검증)
+        detected_brand = extract_brand(query)
+        if detected_brand and is_known_brand(detected_brand):
+            logger.debug(f"[Whitelist] 통과: 알려진 브랜드 감지 '{detected_brand}'")
+            return True
+
+        # 2. 카테고리별 키워드 확인 (BASS_KEYWORDS, PEDAL_KEYWORDS 등)
+        category_attrs = [
+            'BASS_KEYWORDS', 'PEDAL_KEYWORDS', 
+            'AMP_KEYWORDS', 'ACOUSTIC_KEYWORDS', 'MIC_KEYWORDS'
+        ]
+        for attr in category_attrs:
+            keywords = getattr(CategoryConfig, attr, [])
+            for kw in keywords:
+                if kw and kw in query_lower:
+                    logger.debug(f"[Whitelist] 통과: 카테고리 키워드 감지 '{kw}'")
+                    return True
+
+        # 3. VALID_INSTRUMENT_CATEGORIES (한글 악기명)
+        from ..config import FilterConfig
+        valid_cats = getattr(FilterConfig, 'VALID_INSTRUMENT_CATEGORIES', {})
+        for cat_list in valid_cats.values():
+            for kw in cat_list:
+                if kw and kw in query_lower:
+                    logger.debug(f"[Whitelist] 통과: 유효 악기명 감지 '{kw}'")
+                    return True
+
+        # 4. 모델 별칭 검증 (ds1, strat 등)
+        aliases = getattr(CategoryConfig, 'MODEL_ALIASES', {})
+        for alias_key in aliases.keys():
+            if alias_key and alias_key in query_lower:
+                logger.debug(f"[Whitelist] 통과: 모델 별칭 감지 '{alias_key}'")
+                return True
+
+        # 5. 최소한의 일반 명칭 (매우 제한적)
+        minimal_whitelist = ['guitar', 'bass', 'amp', 'pedal', 'mic', '기타', '베이스', '앰프', '페달', '마이크', '악기']
+        for kw in minimal_whitelist:
+            if kw in query_lower:
+                logger.debug(f"[Whitelist] 통과: 일반 악기 명칭 감지 '{kw}'")
+                return True
+
+        logger.info(f"[Whitelist] 차단: '{query}' - 악기 관련 키워드 없음")
+        return False
 
     def search_with_cache(self, query: str, display: int, cache, cache_ttl: int) -> dict[str, Any]:
         """
@@ -147,6 +210,21 @@ class SearchAggregatorService:
         Returns:
             search() 메서드와 동일한 형식
         """
+        # Step 0: 화이트리스트 검증 (API 호출 전 사전 차단)
+        if not self._is_whitelisted_query(query):
+            logger.info(f"[Whitelist] 차단된 검색어: '{query}'")
+            return {
+                'query': query,
+                'search_query': query,
+                'total_count': 0,
+                'items': [],
+                'naver_items': [],
+                'user_items': [],
+                'reference': None,
+                'matched_instrument': None,
+                'is_valid_query': False, # 프론트엔드 알림용
+            }
+
         # 브랜드/카테고리 추출
         brand = extract_brand(query)
         category = self._detect_category(query)

@@ -308,7 +308,18 @@ export default function SearchResultPage() {
                         <div className="min-w-0">
                             {/* Title & Count */}
                             <div className="mb-4 sm:mb-6">
-                                {data?.taxonomy ? (
+                                {data?.is_valid_query === false ? (
+                                    <div className="bg-red-50 border border-red-100 rounded-2xl p-6 sm:p-8 text-center my-8">
+                                        <div className="text-4xl mb-4">🎸❓</div>
+                                        <h2 className="text-xl sm:text-2xl font-bold text-stone-800 mb-2">
+                                            "{query}"은(는) 악기가 아닌 것 같아요
+                                        </h2>
+                                        <p className="text-stone-600">
+                                            DAGU는 악기 시세만 전문적으로 분석합니다.<br />
+                                            검색어를 악기 이름으로 변경해보세요!
+                                        </p>
+                                    </div>
+                                ) : data?.taxonomy ? (
                                     <CategoryHeader taxonomy={data.taxonomy} />
                                 ) : (
                                     <>
