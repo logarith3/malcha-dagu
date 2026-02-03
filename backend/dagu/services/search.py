@@ -210,20 +210,21 @@ class SearchAggregatorService:
         Returns:
             search() 메서드와 동일한 형식
         """
-        # Step 0: 화이트리스트 검증 (API 호출 전 사전 차단)
-        if not self._is_whitelisted_query(query):
-            logger.info(f"[Whitelist] 차단된 검색어: '{query}'")
-            return {
-                'query': query,
-                'search_query': query,
-                'total_count': 0,
-                'items': [],
-                'naver_items': [],
-                'user_items': [],
-                'reference': None,
-                'matched_instrument': None,
-                'is_valid_query': False, # 프론트엔드 알림용
-            }
+        # [2026-02-03] 화이트리스트 검증 비활성화 - 리스트에 없는 악기도 검색 가능하도록
+        # Step 0: 화이트리스트 검증 (API 호출 전 사전 차단) - 비활성화
+        # if not self._is_whitelisted_query(query):
+        #     logger.info(f"[Whitelist] 차단된 검색어: '{query}'")
+        #     return {
+        #         'query': query,
+        #         'search_query': query,
+        #         'total_count': 0,
+        #         'items': [],
+        #         'naver_items': [],
+        #         'user_items': [],
+        #         'reference': None,
+        #         'matched_instrument': None,
+        #         'is_valid_query': False, # 프론트엔드 알림용
+        #     }
 
         # 브랜드/카테고리 추출
         brand = extract_brand(query)
