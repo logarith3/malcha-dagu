@@ -37,12 +37,6 @@ const SOURCE_STYLES: Record<string, { bg: string; text: string; label: string }>
     other: { bg: 'bg-stone-100', text: 'text-stone-700', label: '기타' },
 };
 
-const ALLOWED_DOMAINS = [
-    'mule.co.kr', 'bunjang.co.kr', 'daangn.com', 'danggeun.com',
-    'cafe.naver.com', 'joongna.com', 'secondhand.co.kr',
-    'naver.com' // 네이버 쇼핑 링크 포괄 허용
-];
-
 function formatPrice(price: number): string {
     return new Intl.NumberFormat('ko-KR').format(price);
 }
