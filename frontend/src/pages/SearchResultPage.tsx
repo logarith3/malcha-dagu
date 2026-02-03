@@ -53,19 +53,6 @@ function detectSource(url: string): string {
 
 const MIN_LOADING_TIME = 3400;
 
-// 로그인 URL 생성 (로컬/프로덕션 환경 감지)
-const getLoginUrl = () => {
-    const currentUrl = window.location.href;
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-    if (isLocalhost) {
-        // 로컬 개발: 말차 프론트엔드 로그인 페이지 (현재 페이지로 돌아오기)
-        return `http://localhost:5173/login?redirect_uri=${encodeURIComponent(currentUrl)}`;
-    }
-    // 프로덕션: 말차 프로덕션 로그인
-    return `https://malchalab.com/login?redirect_uri=${encodeURIComponent(currentUrl)}`;
-};
-
 export default function SearchResultPage() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -409,61 +396,13 @@ export default function SearchResultPage() {
                                     <h3 className="text-sm font-bold text-stone-500 mb-3 uppercase tracking-wider">다른 사이트에서 찾기</h3>
                                     <ExternalSearchButtons query={externalSearchQuery} vertical={true} />
                                 </div>
-                                {/* PC용 매물등록 버튼 */}
-                                <button
-                                    onClick={() => {
-                                        if (!isLoggedIn) {
-                                            window.location.href = getLoginUrl();
-                                            return;
-                                        }
-                                        setShowRegisterModal(true);
-                                    }}
-                                    className="
-                                        flex items-center justify-between px-5 py-4
-                                        rounded-xl bg-matcha-100 text-matcha-700
-                                        hover:bg-matcha-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-matcha-200/50
-                                        transition-all duration-200 group w-full
-                                    "
-                                >
-                                    <span className="font-bold text-base">매물등록</span>
-                                    <svg className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:opacity-100 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4.5v15m7.5-7.5h-15" />
-                                    </svg>
-                                </button>
+
                             </div>
                         </aside>
 
                     </main>
 
-                    {/* FAB (매물 등록) - 모바일에서만 표시 (PC는 사이드바에 있음) */}
-                    <motion.button
-                        onClick={() => {
-                            if (!isLoggedIn) {
-                                window.location.href = getLoginUrl();
-                                return;
-                            }
-                            setShowRegisterModal(true);
-                        }}
-                        className="
-                            lg:hidden
-                            fixed bottom-8 right-8 z-50
-                            px-5 py-3 rounded-full
-                            bg-matcha-500 text-white
-                            shadow-[0_4px_0_0_#16a34a]
-                            flex items-center justify-center gap-2
-                            hover:bg-matcha-600 active:shadow-[0_2px_0_0_#16a34a] active:translate-y-[2px]
-                            transition-all duration-150
-                        "
-                        initial={{ scale: 0, rotate: 90 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        <span className="font-bold text-sm">매물등록</span>
-                    </motion.button>
+
                 </motion.div>
             )}
 
